@@ -1,0 +1,99 @@
+{{define "task/modify.html"}}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>FileSync - 修改任务</title>
+    <!-- Tell the browser to be responsive to screen width -->
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <!-- Bootstrap 3.3.7 -->
+    <link rel="stylesheet" href="/static/libs/bootstrap/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="/static/libs/font-awesome/css/font-awesome.min.css">
+    <!-- Ionicons -->
+    <link rel="stylesheet" href="/static/libs/Ionicons/css/ionicons.min.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="/static/libs/AdminLTE/css/AdminLTE.min.css">
+    <!-- AdminLTE Skins. Choose a skin from the css/skins
+         folder instead of downloading all of them to reduce the load. -->
+    <link rel="stylesheet" href="/static/libs/AdminLTE/css/skins/_all-skins.min.css">
+
+    <link rel="stylesheet" href="/static/libs/sdtheme/css/sdtheme.css">
+
+    <!-- jQuery -->
+    <script src="/static/libs/jquery/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="/static/libs/bootstrap/js/bootstrap.min.js"></script>
+
+</head>
+
+<body class="hold-transition skin-blue sidebar-mini">
+<div class="wrapper">
+{{template "admin/navbar.html" .}}
+{{template "admin/sidebar.html" .}}
+
+    <!-- Content Header (Page header) -->
+    <div class="content-wrapper">
+        <div class="container">
+            <br>
+
+            <div class="col-sm-offset-0 col-sm-10">
+                <label class="labTitle col-form-label">修改任务</label>
+                <br/><br/>
+
+                <!-- create or update a article -->
+                <form action="/admin/task/{{.TaskInfo.TaskID}}/edit" method="post" id="postForm" class="form-group">
+                    <label>任务ID,不超过16个字符</label>
+                    <input name="taskID" type="text" class="form-control" value="{{.TaskInfo.TaskID}}" disabled/><br/>
+                    <label>源主机IP example: 127.0.0.1</label>
+                    <input name="srcHost" type="text" class="form-control" value="{{.TaskInfo.SrcHost}}" placeholder=" 源主机IP example: 127.0.0.1"/><br/>
+                    <label>源文件路径 example: /root/SendFile</label>
+                    <input name="srcPath" type="text" class="form-control" value="{{.TaskInfo.SrcPath}}" placeholder="源文件路径 example: /root/SendFile"/><br/>
+                    <label>文件传输端口</label>
+                    <input name="filePort" type="text" class="form-control" value="{{.TaskInfo.FilePort}}" placeholder="文件传输端口"/><br/>
+                    <label>文件传输类型,0复制 1移动,默认为0复制</label>
+                    <input name="tranType" type="text" class="form-control" value="{{.TaskInfo.TranType}}" placeholder="文件传输类型,0复制 1移动,默认为0复制"/><br/>
+                    <label>任务调度时间策略: 单位秒,至少3秒钟</label>
+                    <input name="scheduleTime" type="text" class="form-control" value="{{.TaskInfo.ScheduleTime}}" placeholder="任务调度时间策略: 单位秒,至少3秒钟"/><br/>
+                    <label>目标主机IP example: 127.0.0.1</label>
+                    <input name="destHost" type="text" class="form-control" value="{{.TaskInfo.DestHost}}" placeholder="目标主机IP example: 127.0.0.1"/><br/>
+                    <label>目标文件路径 example: /root/RecvFile</label>
+                    <input name="destPath" type="text" class="form-control" value="{{.TaskInfo.DestPath}}" placeholder="目标文件路径 example: /root/RecvFile"/><br/>
+                    <div class="bootstrap-switch-small">
+                    <span>
+                        <a href="/admin/task" class="btn btn-primary" style="float: left; padding-right: 15px;">撤销</a>
+                    </span>
+                        <span>
+                        <a id="postSave" class="btn btn-primary" style="float: right; padding-left: 15px;">提交</a>
+                    </span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ./wrapper -->
+<!-- AdminLTE App -->
+<script src="/static/libs/jquery/jquery.form.js"></script>
+<script src="/static/libs/AdminLTE/js/adminlte.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#postSave').click(function(event){
+            event.preventDefault();
+            $("#postForm").submit();
+        });
+
+        $("#postForm").ajaxForm(function(data){
+            if(data.succeed == false){
+                alert("提交失败!")
+            } else {
+                window.location.href = "/admin/task";
+            }
+        });
+    });
+</script>
+</body>
+</html>
+{{end}}

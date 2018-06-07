@@ -1,0 +1,34 @@
+{{define "admin/sidebar.html"}}
+<!-- Left side column. contains the logo and sidebar -->
+<aside class="main-sidebar">
+    <!-- sidebar: style can be found in sidebar.less -->
+    <section class="sidebar">
+        <!-- Sidebar user panel -->
+        <!-- sidebar menu: : style can be found in sidebar.less -->
+        <ul class="sidebar-menu" data-widget="tree">
+            <li class="header">MAIN NAVIGATION</li>
+            <li class="active">
+                <a href="/admin/index">
+                    <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/task">
+                    <i class="fa fa-list"></i> <span>任务管理</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/user">
+                    <i class="fa fa-user"></i> <span>用户管理</span>
+                </a>
+            </li>
+            <li>
+                <a href="/admin/profile">
+                    <i class="fa fa-user-secret"></i> <span>个人中心</span>
+                </a>
+            </li>
+        </ul>
+    </section>
+    <!-- /.sidebar -->
+</aside>
+{{end}}
