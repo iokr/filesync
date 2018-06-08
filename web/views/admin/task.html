@@ -71,6 +71,8 @@
                                 <th>端口</th>
                                 <th>目标主机</th>
                                 <th>目标路经</th>
+                                <th>传输方式</th>
+                                <th>调度策略</th>
                                 <th>状态</th>
                                 <th>操作</th>
                             </tr>
@@ -85,6 +87,12 @@
                                 <td>{{.FilePort}}</td>
                                 <td>{{.DestHost}}</td>
                                 <td>{{.DestPath}}</td>
+                                {{if eq .TranType 0}}
+                                <td>复制</td>
+                                {{else}}
+                                <td>移动</td>
+                                {{end}}
+                                <td>{{.ScheduleTime}} 秒</td>
                                 <td>
                                     {{if eq .Status 0}}
                                     <a href="javascript:void(0);" class="label label-danger" onclick="pushlish('{{.ID}}')">打开</a>
