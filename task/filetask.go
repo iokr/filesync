@@ -42,7 +42,7 @@ func (fileTask *FileTask) CreateFileTranServer() {
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			log.Fatal("接受新的连接请求失败!")
+			log.Fatal("接受新的连接请求失败,file err: ", err)
 			continue
 		}
 
@@ -150,7 +150,8 @@ func (fileTask *FileTask) handleMaxFileTransNums(transFlag chan<- bool, filelist
 	fileThreadCount := len(filelist)
 
 	flag := make(chan bool, fileThreadCount)
-
+	defer close(flag)
+	
 	for i := 0; i < fileThreadCount; i++ {
 		go fileTask.handleFileTrans(filelist[i], flag)
 
@@ -165,6 +166,7 @@ func (fileTask *FileTask) handleMaxFileTransNums(transFlag chan<- bool, filelist
 		<-flag
 	}
 	transFlag<-true
+	close(transFlag)
 }
 
 func (fileTask *FileTask) handleFileTrans(filename string, flag chan<- bool) {

@@ -39,7 +39,7 @@ func main() {
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			log.Fatal("接受新的连接请求失败!")
+			log.Fatal("接受新的连接请求失败, err: ", err)
 			continue
 		}
 		log.Println("conn: ", conn.RemoteAddr())

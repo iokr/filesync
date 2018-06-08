@@ -27,7 +27,7 @@ func HandleTaskSchedule() {
 				}
 			}
 		}
-		time.Sleep(2*time.Second)
+		time.Sleep(500*time.Millisecond)
 	}
 }
 
