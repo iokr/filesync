@@ -53,8 +53,14 @@
                     <input name="srcPath" type="text" class="form-control" value="{{.TaskInfo.SrcPath}}" placeholder="源文件路径 example: /root/SendFile"/><br/>
                     <label>文件传输端口</label>
                     <input name="filePort" type="text" class="form-control" value="{{.TaskInfo.FilePort}}" placeholder="文件传输端口"/><br/>
-                    <label>文件传输类型,0复制 1移动,默认为0复制</label>
-                    <input name="tranType" type="text" class="form-control" value="{{.TaskInfo.TranType}}" placeholder="文件传输类型,0复制 1移动,默认为0复制"/><br/>
+                    <label>文件传输类型</label>&nbsp;&nbsp;
+                    {{if eq .TaskInfo.TranType 0}}
+                    <input type="radio" name="tranType" value="copy" checked>复制&nbsp;&nbsp;
+                    <input type="radio" name="tranType" value="cut">移动<br/><br/>
+                    {{else}}
+                    <input type="radio" name="tranType" value="copy">复制&nbsp;&nbsp;
+                    <input type="radio" name="tranType" value="cut" checked>移动<br/><br/>
+                    {{end}}
                     <label>任务调度时间策略: 单位秒,至少3秒钟</label>
                     <input name="scheduleTime" type="text" class="form-control" value="{{.TaskInfo.ScheduleTime}}" placeholder="任务调度时间策略: 单位秒,至少3秒钟"/><br/>
                     <label>目标主机IP example: 127.0.0.1</label>

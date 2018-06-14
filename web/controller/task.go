@@ -8,6 +8,7 @@ import (
 	"github.com/dzhenquan/filesync/util"
 	"strconv"
 	"errors"
+	"strings"
 )
 
 func AdminTaskIndexGet(c *gin.Context) {
@@ -57,8 +58,12 @@ func AdminTaskCreatePost(c *gin.Context) {
 	tType 		:= c.PostForm("tranType")
 	scheTime 	:= c.PostForm("scheduleTime")
 
+	tranType := 0
+	if strings.Compare(tType, "cut") == 0 {
+		tranType = 1
+	}
+
 	filePort, _ 	:= strconv.Atoi(port)
-	tranType, _ 	:= strconv.Atoi(tType)
 	scheduleTime, _ := strconv.Atoi(scheTime)
 
 	if scheduleTime < 3 {
@@ -127,8 +132,12 @@ func AdminTaskEditPost(c *gin.Context) {
 	tType 		:= c.PostForm("tranType")
 	scheTime	:= c.PostForm("scheduleTime")
 
+	tranType := 0
+	if strings.Compare(tType, "cut") == 0 {
+		tranType = 1
+	}
+
 	filePort, _ := strconv.Atoi(port)
-	tranType, _ := strconv.Atoi(tType)
 	scheduleTime,_ := strconv.Atoi(scheTime)
 
 	if scheduleTime < 3 {

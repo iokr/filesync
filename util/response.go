@@ -25,8 +25,6 @@ func (this *RespMessage) CheckRespIsTureOrFalse(respJson []byte) bool {
 		return false
 	}
 
-	fmt.Println("status: ", respMsg.Status)
-
 	if !respMsg.Status {
 		return false
 	}
