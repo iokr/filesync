@@ -22,7 +22,7 @@ func InitDB() (*gorm.DB, error) {
 	if err == nil {
 		DB = db
 		db.SingularTable(true)
-		db.AutoMigrate(&TaskFileInfo{})
+		db.AutoMigrate(&TaskFileInfo{}, &TaskFileLog{})
 		return db, err
 	}
 	return nil, err

@@ -130,19 +130,34 @@ func (fileTask *FileTask) handleFileConn(conn net.Conn) {
 		filesize, _ := strconv.Atoi(fileSlice[1])
 
 		conn.Write([]byte("ok"))
+		startTime := time.Now().Format("2006-01-02 15:04:05")
+		tFileLog := &model.TaskFileLog{
+			TaskID:fileTask.TaskID,
+			SrcHost:fileTask.TaskInfo.SrcHost,
+			DestHost:fileTask.TaskInfo.DestHost,
+			FileName: fileSlice[0],
+			FileSize: fileSlice[1],
+			FileStartTime: startTime,
+		}
 
+		var transResult string
 		if _, err := util.RecvFile(conn, filename, uint64(filesize)); err == nil {
 			log.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
 
+			transResult = "文件接收成功"
 			if fileTask.TaskInfo.TranType == util.FILE_CUT{
 				conn.Write([]byte("ok"))
 			}
-
 			//hash, _ := HashFile(filename)
 			//fmt.Println("md5:", hash)
 		} else {
+			transResult = "文件接收失败"
 			log.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
 		}
+		endTime := time.Now().Format("2006-01-02 15:04:05")
+		tFileLog.FileEndTime = endTime
+		tFileLog.TransResult = transResult
+		tFileLog.Insert()
 	}
 }
 
@@ -199,28 +214,43 @@ func (fileTask *FileTask) handleFileTrans(filename string, flag chan<- bool) {
 
 	recvOk := buf[:recvSize]
 	if strings.Compare(string(recvOk), "ok") == 0 {
+		startTime := time.Now().Format("2006-01-02 15:04:05")
+		tFileLog := &model.TaskFileLog{
+			TaskID: fileTask.TaskID,
+			SrcHost:fileTask.TaskInfo.SrcHost,
+			DestHost:fileTask.TaskInfo.DestHost,
+			FileName: fileInfo.Name(),
+			FileSize: strconv.Itoa(int(fileInfo.Size())),
+			FileStartTime: startTime,
+		}
+		var transResult string
 		if sendSize, err := util.SendFile(conn, filename); err != nil {
 			log.Printf("文件[%s]发送失败,TaskID:[%s],Len:[%d]!\n",
 				fileInfo.Name(), fileTask.TaskID ,sendSize)
+			transResult = "文件发送失败"
 		} else {
 			log.Printf("文件[%s]发送完毕,TaskID:[%s],Len:[%d]!\n",
 				fileInfo.Name(), fileTask.TaskID, sendSize)
+			transResult = "文件发送成功"
+		}
+		endTime := time.Now().Format("2006-01-02 15:04:05")
+		tFileLog.FileEndTime = endTime
+		tFileLog.TransResult = transResult
+		tFileLog.Insert()
+
+		if fileTask.TaskInfo.TranType == util.FILE_CUT {
+			bufDelete := make([]byte, util.MAX_MESSAGE_LEN)
+			recvSize, err = conn.Read(bufDelete)
+			if err != nil {
+				flag<-true
+				return
+			}
+			recvDelete := bufDelete[:recvSize]
+			if strings.Compare(string(recvDelete), "ok") == 0 {
+				os.Remove(filename)
+			}
 		}
 	}
-
-	if fileTask.TaskInfo.TranType == util.FILE_CUT {
-		bufDelete := make([]byte, util.MAX_MESSAGE_LEN)
-		recvSize, err = conn.Read(bufDelete)
-		if err != nil {
-			flag<-true
-			return
-		}
-		recvDelete := bufDelete[:recvSize]
-		if strings.Compare(string(recvDelete), "ok") == 0 {
-			os.Remove(filename)
-		}
-	}
-
 	flag<-true
 }
 

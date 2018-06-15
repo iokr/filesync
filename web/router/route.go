@@ -35,6 +35,8 @@ func Route(router *gin.Engine) {
 		adminAPI.POST("/task/:id/edit", controller.AdminTaskEditPost)
 		adminAPI.POST("/task/:id/publish", controller.AdminTaskPublish)
 		adminAPI.POST("/task/:id/delete", controller.AdminTaskDelete)
+
+		adminAPI.GET("/tran_log", controller.AdminTranLogGet)
 	}
 }
 
