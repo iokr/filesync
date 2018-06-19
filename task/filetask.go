@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"github.com/dzhenquan/filesync/model"
 	"github.com/dzhenquan/filesync/util"
+	"sync"
 )
 
 type FileTask struct {
@@ -18,11 +19,13 @@ type FileTask struct {
 	TaskID		string
 	TaskInfo 	*TaskInfo
 	Quit		chan bool
+	mutex 		sync.Mutex
 }
 
 
 var (
 	FileTasks []*FileTask
+	taskMutex	sync.Mutex
 )
 
 func (fileTask *FileTask) NewFileTask() {
@@ -56,7 +59,6 @@ func (fileTask *FileTask) CreateFileTranServer() {
 }
 
 func (fileTask *FileTask) HandleTaskStartRequest()  {
-
 	filelist, err := util.GetCurrentFileList(fileTask.TaskInfo.SrcPath)
 	if err != nil {
 		return
@@ -83,29 +85,30 @@ func (fileTask *FileTask) HandleTaskStartRequest()  {
 
 			if fileTask.Status == util.TASK_IS_STOP {
 				log.Println("开始退出文件传输....... ", fileTask.Status)
+				close(transFlag)
 				return
 			}
 
 			fileTask.handleMaxFileTransNums(transFlag, filelist[startFile:endFile])
 
 			<-transFlag
+			close(transFlag)
 		}
 	} else {
-
 		transFlag := make(chan bool, 1)
 
 		if fileTask.Status == util.TASK_IS_STOP {
 			log.Println("开始退出文件传输,....... ", fileTask.Status)
+			close(transFlag)
 			return
 		}
 
 		fileTask.handleMaxFileTransNums(transFlag, filelist[:fileTotalCount])
 		<-transFlag
+		close(transFlag)
 	}
 
-
 	fileTask.handleTaskFinishUpdateStatusTime()
-
 	return
 }
 
@@ -181,7 +184,6 @@ func (fileTask *FileTask) handleMaxFileTransNums(transFlag chan<- bool, filelist
 		<-flag
 	}
 	transFlag<-true
-	close(transFlag)
 }
 
 func (fileTask *FileTask) handleFileTrans(filename string, flag chan<- bool) {
@@ -260,7 +262,7 @@ func (fileTask *FileTask) handleTaskFinishUpdateStatusTime() error {
 
 	nowTime := time.Now().Unix()
 
-	fileTask.Status = util.TASK_IS_RUNED
+	fileTask.SetFileTaskStatus(util.TASK_IS_RUNED)
 
 	// 更新数据库中任务状态
 	tFileInfo := model.TaskFileInfo{
@@ -272,7 +274,16 @@ func (fileTask *FileTask) handleTaskFinishUpdateStatusTime() error {
 	return tFileInfo.UpdateTaskStatusTime()
 }
 
+func (fileTask *FileTask) SetFileTaskStatus(status int) {
+	fileTask.mutex.Lock()
+	defer fileTask.mutex.Unlock()
+
+	fileTask.Status = status
+}
+
 func FindFileTaskByTaskIDFromList(taskID string) (*FileTask) {
+	taskMutex.Lock()
+	defer taskMutex.Unlock()
 
 	if len(taskID) == 0 {
 		return nil
@@ -288,6 +299,9 @@ func FindFileTaskByTaskIDFromList(taskID string) (*FileTask) {
 }
 
 func RemoveFileTaskFromList(slice []*FileTask, elems ...*FileTask) []*FileTask {
+	taskMutex.Lock()
+	defer taskMutex.Unlock()
+
 	isInElems := make(map[*FileTask]bool)
 	for _, elem := range elems {
 		isInElems[elem] = true

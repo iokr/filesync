@@ -1,10 +1,10 @@
-{{define "admin/tran_log.html"}}
+{{define "admin/profile.html"}}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>FileSync - 文件传输日志管理</title>
+    <title>FileSync - 个人中心</title>
     <!-- Tell the browser to be responsive to screen width -->
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <!-- Bootstrap 3.3.7 -->
@@ -43,11 +43,11 @@
     <!-- Content Header (Page header) -->
     <section class="content-header">
         <h1>
-            <small>文件传输日志</small>
+            <small>个人中心</small>
         </h1>
         <ol class="breadcrumb">
             <li><a href="/admin/index"><i class="fa fa-dashboard"></i> Home</a></li>
-            <li class="active"><a href="#">日志管理</a></li>
+            <li class="active"><a href="#">个人中心</a></li>
         </ol>
     </section>
 
@@ -58,58 +58,7 @@
                 <div class="box">
                     <!-- /.box-header -->
                     <div class="box-body" style="overflow-x: auto;">
-                        <table class="table table-bordered table-hover">
-                            <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>任务ID</th>
-                                <th>源主机</th>
-                                <th>目标主机</th>
-                                <th>文件名</th>
-                                <th>文件大小</th>
-                                <th>开始时间</th>
-                                <th>结束时间</th>
-                                <th>传输结果</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {{range .TranLogs}}
-                            <tr>
-                                <td>{{.ID}}</td>
-                                <td>{{.TaskID}}</td>
-                                <td>{{.SrcHost}}</td>
-                                <td>{{.DestHost}}</td>
-                                <td>{{.FileName}}</td>
-                                <td>{{.FileSize}}</td>
-                                <td>{{.FileStartTime}}</td>
-                                <td>{{.FileEndTime}}</td>
-                                <td>{{.TransResult}}</td>
-                            </tr>
-                            {{end}}
-                            </tfoot>
-                        </table>
-                        <div style="padding-top: 20px;">
-                            <span style="float: left;margin-right: 10px;">总共有 {{$.totalCount}} 数据，共{{$.totalPage}}页</span>
-                            {{if eq $.totalPage $.nextPage}}
-                            <span style="float: right;">
-                                <a class="label label-success">下一页</a>
-                            </span>
-                            {{else}}
-                            <span style="float: right;">
-                                <a href="/admin/tran_log/{{$.nextPage}}" class="label label-success">下一页</a>
-                            </span>
-                            {{end}}
-                            <span style="float: right;padding-right: 10px;">{{$.curPage}}</span>
-                            {{if le $.prevPage 0}}
-                                <span style="float: right;padding-right: 10px;">
-                                <a class="label label-success">上一页</a>
-                            </span>
-                            {{else}}
-                            <span style="float: right;padding-right: 10px;">
-                                <a href="/admin/tran_log/{{$.prevPage}}" class="label label-success">上一页</a>
-                            </span>
-                            {{end}}
-                        </div>
+                        哈哈哈,这里什么都没有哟!
                     </div>
                     <!-- /.box-body -->
                 </div>

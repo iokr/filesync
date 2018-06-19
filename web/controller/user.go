@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
-	"fmt"
 )
 
 // SignIn Get  用户登录
@@ -18,9 +17,6 @@ func SigninPost(c *gin.Context) {
 
 	useremail = strings.TrimSpace(useremail)
 
-	fmt.Println("email: ", useremail)
-	fmt.Println("pword: ", password)
-
 	if strings.Compare(useremail, "admin") == 0 &&
 		strings.Compare(password, "123456") == 0 {
 
@@ -33,6 +29,11 @@ func SigninPost(c *gin.Context) {
 	})
 }
 
+func AdminProfileGet(c *gin.Context) {
+
+
+	c.HTML(http.StatusOK, "admin/profile.html", nil)
+}
 
 func AdminIndexGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "admin/index.html", nil)

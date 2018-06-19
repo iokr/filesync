@@ -6,6 +6,7 @@ const (
 	TASK_SROP		= "1030"	//任务暂停
 	TASK_UPDATE		= "1040"	//任务修改
 	TASK_DELETE		= "1050"	//任务删除
+	TASK_UNABLE		= "1060"	//无效任务
 )
 
 const (

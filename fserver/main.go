@@ -60,7 +60,8 @@ func handleMessageConn(conn net.Conn) {
 		if err == io.EOF {
 			return
 		}
-		respMsg.Status = false
+		log.Println("Read client message is failure!")
+		return
 	}
 	defer conn.Close()
 
@@ -81,7 +82,7 @@ func handleTaskRequest(taskJson []byte, respMsg *util.RespMessage) bool {
 	var returnValue bool
 
 	taskInfo := &task.TaskInfo{}
-	fileTask := &task.FileTask{
+	fileTask := &task.FileTask {
 		Quit:make(chan bool, 1),
 	}
 	tFileInfo := &model.TaskFileInfo{}
@@ -89,6 +90,7 @@ func handleTaskRequest(taskJson []byte, respMsg *util.RespMessage) bool {
 	err := json.Unmarshal(taskJson, taskInfo)
 	if err != nil {
 		log.Println("解析客户端发送的JSON报文失败!")
+		respMsg.TaskType = util.TASK_UNABLE
 		return false
 	}
 
@@ -185,6 +187,7 @@ func handleTaskCreate(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo) bo
 
 // handle task start
 func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isLocalDestIP bool, isLocalHost bool) bool {
+	//从数据库获取任务
 	taskFileInfo, err := tFileInfo.Find()
 	if err != nil {
 		log.Println("从数据库获取任务失败!")
@@ -266,7 +269,8 @@ func handleTaskStop(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo, isLo
 	}
 
 	fTask.Quit <- true
-	fTask.Status = util.TASK_IS_STOP
+	fTask.SetFileTaskStatus(util.TASK_IS_STOP)
+	//fTask.Status = util.TASK_IS_STOP
 
 	tFileInfo.Status = util.TASK_IS_STOP
 

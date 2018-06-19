@@ -11,19 +11,19 @@ var DB *gorm.DB
 
 // Base Model
 type BaseModel struct {
-	ID        uint64 `gorm:"primary_key"`
+	ID        uint64 	`gorm:"primary_key"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 func InitDB() (*gorm.DB, error) {
 	db, err := gorm.Open("mysql", config.DBConfig.URL)
-
-	if err == nil {
-		DB = db
-		db.SingularTable(true)
-		db.AutoMigrate(&TaskFileInfo{}, &TaskFileLog{})
-		return db, err
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+
+	DB = db
+	db.SingularTable(true)
+	db.AutoMigrate(&TaskFileInfo{}, &TaskFileLog{})
+	return db, err
 }
