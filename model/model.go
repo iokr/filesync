@@ -24,6 +24,6 @@ func InitDB() (*gorm.DB, error) {
 
 	DB = db
 	db.SingularTable(true)
-	db.AutoMigrate(&TaskFileInfo{}, &TaskFileLog{})
+	db.AutoMigrate(&TaskFileInfo{}, &TaskFileLog{}, &TaskFileCopy{})
 	return db, err
 }

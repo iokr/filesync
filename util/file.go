@@ -5,6 +5,8 @@ import (
 	"net"
 	"io/ioutil"
 	"io"
+	"crypto/md5"
+	"fmt"
 )
 
 type FileInfo struct {
@@ -73,4 +75,35 @@ func CheckIsDirByPath(path string) bool {
 	}
 
 	return fileInfo.IsDir()
+}
+
+// Mkdir all by full path
+// returns true/false
+func MkdirAllByPath(dirPath string) bool {
+	// 检查目标路径是否存在,不存在则创建
+	if (!CheckIsDirByPath(dirPath)) {
+		err := os.MkdirAll(dirPath, os.ModePerm)
+		if err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// get file md5sum
+// return hash or err
+func HashFile(filename string) (hash string, err error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	h := md5.New()
+	if _, err = io.Copy(h, f); err != nil {
+		return
+	}
+
+	hash = fmt.Sprintf("%x", h.Sum(nil))
+	return
 }

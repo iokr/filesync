@@ -32,6 +32,7 @@ func main() {
 	}
 	defer listen.Close()
 
+	//从数据库获取任务,对未完成任务进行调度
 	go schedule.HandleTaskSchedule()
 
 	log.Println("Message Listen ...")
@@ -65,10 +66,10 @@ func handleMessageConn(conn net.Conn) {
 	}
 	defer conn.Close()
 
-	log.Println("recvBuf: ", string(recvBuf[:readLen]), "len:", readLen)
-
+	//处理任务请求
 	respMsg.Status = handleTaskRequest(recvBuf[:readLen], respMsg)
 
+	//获取返回消息JSON报文
 	respJson := respMsg.GetRespMessageJson()
 	_, err = conn.Write([]byte(respJson))
 	if err != nil {
@@ -77,14 +78,12 @@ func handleMessageConn(conn net.Conn) {
 }
 
 // handle client task request
-//returns true/false
+// returns true/false
 func handleTaskRequest(taskJson []byte, respMsg *util.RespMessage) bool {
 	var returnValue bool
+	var fileTask 	*task.FileTask
 
 	taskInfo := &task.TaskInfo{}
-	fileTask := &task.FileTask {
-		Quit:make(chan bool, 1),
-	}
 	tFileInfo := &model.TaskFileInfo{}
 
 	err := json.Unmarshal(taskJson, taskInfo)
@@ -120,37 +119,38 @@ func handleTaskRequest(taskJson []byte, respMsg *util.RespMessage) bool {
 		}
 	}
 
+	// 如果任务链表中存在该任务,则不创建
+	fTask := task.FindFileTaskByTaskIDFromList(taskInfo.TaskID)
+	if fTask == nil {
+		fileTask = &task.FileTask {}
+	} else {
+		fileTask = fTask
+	}
+
 	taskType := taskInfo.TaskType
 	fileTask.TaskID = taskInfo.TaskID
 	fileTask.TaskInfo = taskInfo
 	tFileInfo.TaskID = taskInfo.TaskID
 
 	switch taskType {
-	case util.TASK_CREATE:
+	case util.TASK_CREATE:			//任务创建
 		log.Println("Task Created.")
-
 		returnValue = handleTaskCreate(tFileInfo, taskInfo)
 
-	case util.TASK_START:
+	case util.TASK_START:			//任务启动
 		fmt.Println("Task Start.")
-
 		returnValue = handleTaskStart(tFileInfo, fileTask, isLocalDestIP, isLocalHost)
 
-	case util.TASK_SROP:
+	case util.TASK_SROP:			//任务暂停
 		fmt.Println("Task Stop.")
-
 		returnValue = handleTaskStop(tFileInfo, taskInfo, isLocalDestIP)
 
-		fmt.Println("returnValue: ", returnValue)
-
-	case util.TASK_UPDATE:
+	case util.TASK_UPDATE:			//任务修改
 		fmt.Println("Task Update")
-
 		returnValue = handleTaskUpdate(tFileInfo, taskInfo)
 
-	case util.TASK_DELETE:
+	case util.TASK_DELETE:			//任务删除
 		fmt.Println("Task Delete.")
-
 		returnValue = handleTaskDelete(tFileInfo)
 	}
 
@@ -159,7 +159,7 @@ func handleTaskRequest(taskJson []byte, respMsg *util.RespMessage) bool {
 
 // handle task create and insert to db
 func handleTaskCreate(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo) bool {
-	/*从数据库中查找该任务节点*/
+	// 从数据库中查找该任务节点
 	fTask, err := tFileInfo.Find()
 	if fTask != nil && err == nil {
 		log.Printf("该任务[%s]已存在!", taskInfo.TaskID)
@@ -187,26 +187,33 @@ func handleTaskCreate(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo) bo
 
 // handle task start
 func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isLocalDestIP bool, isLocalHost bool) bool {
-	//从数据库获取任务
+	// 从数据库获取任务
 	taskFileInfo, err := tFileInfo.Find()
 	if err != nil {
-		log.Println("从数据库获取任务失败!")
+		log.Printf("从数据库获取任务[%s]失败!", tFileInfo.TaskID)
 		return false
 	}
 
-	//从任务链表中查找该任务
+	// 从任务链表中查找该任务
 	fTask := task.FindFileTaskByTaskIDFromList(tFileInfo.TaskID)
 	if fTask != nil {
 		if (fTask.Status == util.TASK_IS_RUNNING) ||
 			(taskFileInfo.Status == util.TASK_IS_RUNNING) {
-			log.Println("任务正在运行,不做处理!")
+			log.Printf("任务[%s]正在运行,不做处理!", tFileInfo.TaskID)
 			return true
 		}
-	} else {
-		task.FileTasks = append(task.FileTasks, fileTask)
 	}
 
-	//修改数据库中任务的状态
+	// 本地或者本地是目标端传输文件
+	if isLocalHost || isLocalDestIP {
+		// 检查目标路径是否存在,不存在则创建
+		if !util.MkdirAllByPath(fileTask.TaskInfo.DestPath) {
+			log.Printf("目标路径[%s]创建失败!", fileTask.TaskInfo.DestPath)
+			return false
+		}
+	}
+
+	// 更新数据库中任务的状态
 	tFileInfo.Status = util.TASK_IS_RUNNING
 	err = tFileInfo.UpdateTaskStatus()
 	if err != nil {
@@ -216,16 +223,11 @@ func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isL
 
 	fileTask.Status = util.TASK_IS_RUNNING
 
-	if isLocalHost {
-		// 检查目标路径是否存在,不存在则创建
-		if (!util.CheckIsDirByPath(fileTask.TaskInfo.DestPath)) {
-			err := os.MkdirAll(fileTask.TaskInfo.DestPath, os.ModePerm)
-			if err != nil {
-				log.Printf("目标路径[%s]创建失败!", fileTask.TaskInfo.DestPath)
-				return false
-			}
-		}
+	if fTask == nil {
+		task.FileTasks = append(task.FileTasks, fileTask)
+	}
 
+	if isLocalHost {
 		go fileTask.CreateFileTranServer()
 
 		// 在这里睡眠是为了保证服务器先准备好接收文件操作
@@ -237,15 +239,6 @@ func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isL
 	}
 
 	if isLocalDestIP {
-		// 检查目标路径是否存在,不存在则创建
-		if (!util.CheckIsDirByPath(fileTask.TaskInfo.DestPath)) {
-			err := os.MkdirAll(fileTask.TaskInfo.DestPath, os.ModePerm)
-			if err != nil {
-				log.Printf("目标路径[%s]创建失败!", fileTask.TaskInfo.DestPath)
-				return false
-			}
-		}
-
 		go fileTask.CreateFileTranServer()
 	} else {
 		go fileTask.HandleTaskStartRequest()
@@ -256,7 +249,7 @@ func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isL
 
 // handle task stop
 func handleTaskStop(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo, isLocalDestIP bool) bool {
-	//从任务链表中查找该任务
+	// 从任务链表中查找该任务
 	fTask := task.FindFileTaskByTaskIDFromList(taskInfo.TaskID)
 	if fTask == nil {
 		log.Printf("任务[%s]不存在!", taskInfo.TaskID)
@@ -268,18 +261,18 @@ func handleTaskStop(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo, isLo
 		return true
 	}
 
-	fTask.Quit <- true
 	fTask.SetFileTaskStatus(util.TASK_IS_STOP)
-	//fTask.Status = util.TASK_IS_STOP
 
 	tFileInfo.Status = util.TASK_IS_STOP
 
+	// 更新数据库中任务状态
 	err := tFileInfo.UpdateTaskStatus()
 	if err != nil {
 		log.Printf("更新任务[%s]状态失败!", taskInfo.TaskID)
 		return false
 	}
 
+	// 向文件接收服务器发送停止信号
 	if isLocalDestIP {
 		conn, err := util.CreateSocketConnect(taskInfo.DestHost, taskInfo.FilePort)
 		if err != nil {
@@ -290,7 +283,7 @@ func handleTaskStop(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo, isLo
 		conn.Close()
 	}
 
-	/*从任务链表中删除该任务*/
+	// 从任务链表中删除该任务
 	task.FileTasks = task.RemoveFileTaskFromList(task.FileTasks, fTask)
 
 	return true
@@ -298,12 +291,15 @@ func handleTaskStop(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo, isLo
 
 // handle task update
 func handleTaskUpdate(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo) bool {
-	/*从任务链表中查找该任务*/
+	// 从任务链表中查找该任务
 	fTask := task.FindFileTaskByTaskIDFromList(taskInfo.TaskID)
 	if fTask != nil {
 		if fTask.Status != util.TASK_IS_STOP {
 			log.Printf("请停止任务[%s]后修改!", fTask.TaskID)
 			return false
+		} else {
+			// 从任务链表中删除该任务
+			task.FileTasks = task.RemoveFileTaskFromList(task.FileTasks, fTask)
 		}
 	}
 
@@ -315,6 +311,7 @@ func handleTaskUpdate(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo) bo
 	tFileInfo.TranType = taskInfo.TranType
 	tFileInfo.ScheduleTime = taskInfo.ScheduleTime
 
+	// 从数据库中修改该任务节点
 	err := tFileInfo.Update()
 	if err != nil {
 		log.Printf("任务[%s]修改失败!", taskInfo.TaskID)
@@ -326,22 +323,26 @@ func handleTaskUpdate(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo) bo
 
 // handle task delete
 func handleTaskDelete(tFileInfo *model.TaskFileInfo) bool {
-	/*从任务链表中查找该任务*/
+	// 从任务链表中查找该任务
 	fTask := task.FindFileTaskByTaskIDFromList(tFileInfo.TaskID)
 	if fTask != nil {
 		if fTask.Status != util.TASK_IS_STOP {
 			log.Printf("请停止任务[%s]后删除!", fTask.TaskID)
 			return false
+		} else {
+			// 从任务链表中删除该任务
+			task.FileTasks = task.RemoveFileTaskFromList(task.FileTasks, fTask)
 		}
 	}
 
-	/*从数据库中查找该任务节点*/
+	// 从数据库中查找该任务节点
 	tFileInfo, err := tFileInfo.Find()
 	if err != nil {
 		log.Printf("该任务[%s]不存在!", tFileInfo.TaskID)
 		return false
 	}
 
+	// 从数据库中删除该任务节点
 	err = tFileInfo.Delete()
 	if err != nil {
 		log.Printf("任务[%s]删除失败!", tFileInfo.TaskID)
