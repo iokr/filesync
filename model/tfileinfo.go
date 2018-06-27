@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/dzhenquan/filesync/util"
+	"github.com/dzhenquan/filesync/config"
 	"strconv"
 	"fmt"
 )
@@ -65,7 +66,7 @@ func (tFileInfo *TaskFileInfo) UpdateTaskStatus() error {
 }
 
 func (tFileInfo *TaskFileInfo) SendTaskInfoToLocal(taskType string) bool {
-	conn, err := util.CreateSocketConnect("127.0.0.1", util.MSG_TRAN_PORT)
+	conn, err := util.CreateSocketConnect("127.0.0.1", config.ServerConfig.FServerPort)
 	if err != nil {
 		return false
 	}

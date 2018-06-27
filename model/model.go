@@ -4,7 +4,7 @@ import (
 	"time"
 	"github.com/jinzhu/gorm"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/dzhenquan/filesync/web/config"
+	"github.com/dzhenquan/filesync/config"
 )
 
 var DB *gorm.DB

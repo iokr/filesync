@@ -66,8 +66,8 @@ func AdminTaskCreatePost(c *gin.Context) {
 	filePort, _ 	:= strconv.Atoi(port)
 	scheduleTime, _ := strconv.Atoi(scheTime)
 
-	if scheduleTime < 3 {
-		scheduleTime = 3
+	if scheduleTime < 1 {
+		scheduleTime = 1
 	}
 
 	tFileInfo := &model.TaskFileInfo{
@@ -140,8 +140,8 @@ func AdminTaskEditPost(c *gin.Context) {
 	filePort, _ := strconv.Atoi(port)
 	scheduleTime,_ := strconv.Atoi(scheTime)
 
-	if scheduleTime < 3 {
-		scheduleTime = 3
+	if scheduleTime < 1 {
+		scheduleTime = 1
 	}
 
 	tFileInfo := &model.TaskFileInfo{

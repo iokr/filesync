@@ -4,39 +4,19 @@
     "Database"     : "filesync",
     "User"	       : "root",
     "Password"     : "123456",
-    "Charset"      : "utf8mb4",  /*要支持emoji的话，填 utf8mb4 */
-    "Host"         : "127.0.0.1",/*数据库ip*/
-    "Port"         : 3306,       /*数据库端口*/
-    "MaxIdleConns" : 5,          /*空闲时最大的连接数*/
-    "MaxOpenConns" : 10          /*最大的连接数*/
+    "Charset"      : "utf8mb4",                 /*要支持emoji的话，填 utf8mb4 */
+    "Host"         : "127.0.0.1",               /*数据库ip*/
+    "Port"         : 3306,                      /*数据库端口*/
+    "MaxIdleConns" : 5,                         /*空闲时最大的连接数*/
+    "MaxOpenConns" : 10                         /*最大的连接数*/
   },
   "go": {
-    "APIPoweredBy"        : "",/*后台go加的X-Powered-By*/
-    "SiteName"            : "FileSync",      /*网站名称*/
-    "Host"                : "",  /*网站域名*/
-    "ImgHost"             : "",  /*图片服务器域名*/
-    "Env"                 : "development",        /*模式(开发，测试，产品)*/
-    "LogDir"              : "", /*日志文件所在的目录，如果不设的话，默认在项目目录下*/
-    "LogFile"             : "filesync.log", /*日志文件*/
-    "APIPrefix"           : "/api", /*api服务请求前缀*/
-    /*图片上传的目录*/
-    /*如果要修改的话，请使用绝对路径，不要使用相对路径*/
-    "UploadImgDir"        : "./static/upload/",
-    "ImgPath"             : "/upload/img",        /*上传后的图片请求地址前缀*/
-    "MaxMultipartMemory"  : 3, /*上传的图片最大允许的大小，单位MB*/
-    "Port"                : 8023,                 /*go监听的端口*/
-    "TokenSecret"         : "Jxa26iOirBiYX8iLCJuYm5iy", /*TokenSecret，请修改*/
-    "TokenMaxAge"         : 86400, /*token多久过期，单位秒*/
-    "PassSalt"            : "xiaodai521",           /*用户密码加盐，请修改*/
-    "CrawlerName"         : "",            /*爬虫账号名*/
-    "LuosimaoVerifyURL"   : "", /*螺丝帽验证地址*/
-    "LuosimaoAPIKey"      : "", /*螺丝帽api_key*/
-    "MailUser"            : "", /*域名邮箱账号*/
-    "MailPass"            : "", /*域名邮箱密码*/
-    "MailHost"            : "smtp.qq.com",        /*smtp邮箱域名*/
-    "MailPort"            : 465,                  /*smtp邮箱端口*/
-    "MailFrom"            : "",          /*邮件来源*/
-    "Github"              : "https://github.com/dzhenquan/filesync",/*filesync项目github地址*/
-    "BaiduPushLink"       : ""/*百度链接提交接口地址*/
+    "WebPort"             : 8023,               /*Web服务器监听端口*/
+    "FServerPort"         : 8686,               /*文件传输服务器监听端口*/
+    "MaxMultipartMemory"  : 3,                  /*上传的图片最大允许的大小，单位MB*/
+    "MaxFtsNum"           : 10,                  /*每次最大同时传输文件个数*/
+    "Env"                 : "development",      /*模式(开发，测试，产品)*/
+    "LogDir"              : "",                 /*日志文件所在的目录，如果不设的话，默认在项目目录下*/
+    "LogFile"             : "filesync.log"      /*日志文件*/
   }
 }

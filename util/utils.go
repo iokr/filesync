@@ -50,22 +50,42 @@ func CheckIPIsLocalIP(ipaddr string) bool {
 
 // Get current file list by file full path
 // returns the file list or err
-func GetCurrentFileList(filedir string) (filelist []string, err error) {
+func GetCurrentFileList(filePath string) (filelist , filedir []string, err error) {
 
-	if err = filepath.Walk(filedir, func(path string, info os.FileInfo, err error) error {
-
+	err = filepath.Walk(filePath, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
-
 			filelist = append(filelist, path)
 			if len(filelist) > 100000 {
 				err = errors.New("文件列表达到最大限制10000！")
 				return err
 			}
+		} else {
+			if strings.Compare(filePath, path) != 0 {
+				filedir = append(filedir, path)
+			}
 		}
 		return nil
-	}); err != nil {
-		return nil, err
-	}
+	})
 
-	return filelist, nil
+	return filelist, filedir, err
+}
+
+// check path is dir
+// returns true/false
+func checkPathIsDir(filePath string) bool {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return os.IsExist(err)
+	}
+	return fileInfo.IsDir()
+}
+
+// check file path is exists
+// returns true/false
+func checkPathIsExists(filePath string) bool {
+	_, err := os.Stat(filePath)
+	if err != nil {
+		return os.IsExist(err)
+	}
+	return true
 }

@@ -8,7 +8,7 @@ type TaskFileLog struct {
 	SrcHost 		string
 	DestHost		string
 	FileName		string	`json:"fileName"`
-	FileSize		string 	`json:"fileSize"`
+	FileSize		int64 	`json:"fileSize"`
 	FileStartTime	string
 	FileEndTime		string
 	TransResult 	string

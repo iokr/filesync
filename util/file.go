@@ -16,7 +16,7 @@ type FileInfo struct {
 
 // Send file by conn and file name
 // returns send file size or err
-func SendFile(conn net.Conn, filename string) (sendLen int, err error) {
+func SendFile(conn net.Conn, filename string) (sendLen int64, err error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return -1, err
@@ -33,9 +33,8 @@ func SendFile(conn net.Conn, filename string) (sendLen int, err error) {
 		return -1, err
 	}
 
-	return sendSize, nil
+	return int64(sendSize), nil
 }
-
 
 // Recv file by conn, file name and file size
 // returns true/false or err
@@ -64,7 +63,6 @@ func RecvFile(conn net.Conn, filename string, filesize uint64) (flag bool, err e
 	}
 	return true, nil
 }
-
 
 // check path is dir
 // returns true/false

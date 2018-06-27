@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"os"
 	"io"
-	"github.com/dzhenquan/filesync/web/config"
+	"github.com/dzhenquan/filesync/config"
 	"github.com/dzhenquan/filesync/model"
 	"github.com/dzhenquan/filesync/web/router"
 )
@@ -50,5 +50,5 @@ func main() {
 
 	router.Route(app)
 
-	app.Run(":" + fmt.Sprintf("%d", config.ServerConfig.Port))
+	app.Run(":" + fmt.Sprintf("%d", config.ServerConfig.WebPort))
 }

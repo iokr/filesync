@@ -10,6 +10,7 @@ import (
 	"github.com/dzhenquan/filesync/util"
 	"github.com/dzhenquan/filesync/task"
 	"github.com/dzhenquan/filesync/model"
+	"github.com/dzhenquan/filesync/config"
 	"strings"
 	"time"
 	"github.com/dzhenquan/filesync/fserver/schedule"
@@ -25,7 +26,11 @@ func main() {
 	}
 	defer db.Close()
 
-	listen, err := util.CreateSocketListen("", util.MSG_TRAN_PORT)
+	// 开启多核CPU传输文件
+	//numCpu := runtime.NumCPU()
+	//runtime.GOMAXPROCS(numCpu)
+
+	listen, err := util.CreateSocketListen("", config.ServerConfig.FServerPort)
 	if err != nil {
 		log.Println("创建本地监听失败!")
 		os.Exit(-1)
@@ -43,7 +48,7 @@ func main() {
 			log.Fatal("接受新的连接请求失败, err: ", err)
 			continue
 		}
-		log.Println("conn: ", conn.RemoteAddr())
+		//log.Println("conn: ", conn.RemoteAddr())
 		go handleMessageConn(conn)
 	}
 }
@@ -88,7 +93,6 @@ func handleTaskRequest(taskJson []byte, respMsg *util.RespMessage) bool {
 
 	err := json.Unmarshal(taskJson, taskInfo)
 	if err != nil {
-		log.Println("解析客户端发送的JSON报文失败!")
 		respMsg.TaskType = util.TASK_UNABLE
 		return false
 	}
@@ -134,23 +138,23 @@ func handleTaskRequest(taskJson []byte, respMsg *util.RespMessage) bool {
 
 	switch taskType {
 	case util.TASK_CREATE:			//任务创建
-		log.Println("Task Created.")
+		log.Printf("Task [%s] Created!\n", taskInfo.TaskID)
 		returnValue = handleTaskCreate(tFileInfo, taskInfo)
 
 	case util.TASK_START:			//任务启动
-		fmt.Println("Task Start.")
+		log.Printf("Task [%s] Start!\n", taskInfo.TaskID)
 		returnValue = handleTaskStart(tFileInfo, fileTask, isLocalDestIP, isLocalHost)
 
 	case util.TASK_SROP:			//任务暂停
-		fmt.Println("Task Stop.")
+		log.Printf("Task [%s] Stop!\n", taskInfo.TaskID)
 		returnValue = handleTaskStop(tFileInfo, taskInfo, isLocalDestIP)
 
 	case util.TASK_UPDATE:			//任务修改
-		fmt.Println("Task Update")
+		log.Printf("Task [%s] Update!\n", taskInfo.TaskID)
 		returnValue = handleTaskUpdate(tFileInfo, taskInfo)
 
 	case util.TASK_DELETE:			//任务删除
-		fmt.Println("Task Delete.")
+		log.Printf("Task [%s] Delete!\n", taskInfo.TaskID)
 		returnValue = handleTaskDelete(tFileInfo)
 	}
 
@@ -197,6 +201,7 @@ func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isL
 	// 从任务链表中查找该任务
 	fTask := task.FindFileTaskByTaskIDFromList(tFileInfo.TaskID)
 	if fTask != nil {
+
 		if (fTask.Status == util.TASK_IS_RUNNING) ||
 			(taskFileInfo.Status == util.TASK_IS_RUNNING) {
 			log.Printf("任务[%s]正在运行,不做处理!", tFileInfo.TaskID)

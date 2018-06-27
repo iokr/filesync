@@ -31,7 +31,6 @@ func initJSON() {
 	}
 
 	return
-	//fmt.Println("json: ", jsonData)
 }
 
 
@@ -40,12 +39,12 @@ type dBConfig struct {
 	Database			string
 	User 				string
 	Password 			string
-	Host 				string
-	Port 				int
+	Host 				string		// 数据库ip
+	Port 				int			// 数据库端口
 	Charset 			string
 	URL 				string
-	MaxIdleConns 		int
-	MaxOpenConns 		int
+	MaxIdleConns 		int			// 空闲时最大的连接数
+	MaxOpenConns 		int			// 最大的连接数
 }
 
 // DBConfig 数据库相关配置
@@ -59,17 +58,24 @@ func initDB() {
 }
 
 type serverConfig struct {
+	WebPort				int			// Web服务器监听端口
+	FServerPort 		int			// 文件传输服务器监听端口
+	MaxMultipartMemory 	int			// 上传的图片最大允许的大小，单位MB
+	MaxFtsNum			int 		// 每次最大同时传输文件个数
+	Env                	string		// 模式(开发，测试，产品)
+	LogDir            	string		// 日志文件所在的目录，如果不设的话，默认在项目目录下
+	LogFile            	string		// 日志文件
+
+/*
 	APIPoweredBy       string
 	SiteName           string
 	Host               string
 	ImgHost            string
-	Env                string
-	LogDir             string
-	LogFile            string
+
 	APIPrefix          string
 	UploadImgDir       string
 	ImgPath            string
-	MaxMultipartMemory int
+
 	Port               int
 	TokenSecret        string
 	TokenMaxAge        int
@@ -84,6 +90,7 @@ type serverConfig struct {
 	MailFrom           string //邮件来源
 	Github             string
 	BaiduPushLink      string
+*/
 }
 
 // ServerConfig 服务器相关配置

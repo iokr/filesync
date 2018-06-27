@@ -10,19 +10,23 @@ const (
 )
 
 const (
-	FILE_COPY		= iota
-	FILE_CUT
+	FILE_COPY		= iota		//文件复制
+	FILE_CUT					//文件移动
 )
 
 const (
-	TASK_IS_STOP	= iota
-	TASK_IS_RUNED
-	TASK_IS_RUNNING
+	TASK_IS_STOP	= iota		//任务停止
+	TASK_IS_RUNED				//任务完成
+	TASK_IS_RUNNING				//任务运行中
+)
+
+
+const (
+	TRAN_DIR 		= iota		//传输目录
+	TRAN_FILE					//传输文件
 )
 
 var (
-	MSG_TRAN_PORT		= 8686			//消息指令传输端口
-	MAX_TRAN_FILE_NUM 	= 5   			//每次最大同时传输文件个数
 	MAX_MESSAGE_LEN		= 1024			//每次接收消息的最大长度(字节)
 	MAX_FILE_DATA_LEN 	= 1024*1024*16	//每次接收文件数据的最大长度(字节)
 )
