@@ -135,7 +135,7 @@ func (fileTask *FileTask) handleFileDataConn(conn net.Conn, filename string, fil
 	}
 
 	if _, err := util.RecvFile(conn, filename, uint64(filesize)); err == nil {
-		//log.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
+		log.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
 
 		transResult = "文件接收成功"
 		if fileTask.TaskInfo.TranType == util.FILE_CUT{
@@ -145,7 +145,7 @@ func (fileTask *FileTask) handleFileDataConn(conn net.Conn, filename string, fil
 		//fmt.Println("md5:", hash)
 	} else {
 		transResult = "文件接收失败"
-		//log.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
+		log.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
 	}
 	finishTime := time.Now().Format("2006-01-02 15:04:05")
 	tFileLog.FileEndTime = finishTime
@@ -242,7 +242,9 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		fmt.Printf("File [%s] is not exists!\n", filePath)
-		flag<-true
+		if fileTask.Status != util.TASK_IS_STOP {
+			flag<-true
+		}
 		return
 	}
 
@@ -252,7 +254,9 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	// 连接到文件传输服务器
 	conn, err := util.CreateSocketConnect(fileTask.TaskInfo.DestHost, fileTask.TaskInfo.FilePort)
 	if err != nil {
-		flag<-true
+		if fileTask.Status != util.TASK_IS_STOP {
+			flag<-true
+		}
 		return
 	}
 	defer conn.Close()
@@ -271,7 +275,9 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	// 将结构体转化为json报文
 	dataByte, err := tFileInfo.MarshalToJson()
 	if err != nil {
-		flag<-true
+		if fileTask.Status != util.TASK_IS_STOP {
+			flag<-true
+		}
 		return
 	}
 
@@ -279,7 +285,9 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	_, err = conn.Write([]byte(dataByte))
 	if err != nil {
 		fmt.Println("Send data string is failure!")
-		flag<-true
+		if fileTask.Status != util.TASK_IS_STOP {
+			flag<-true
+		}
 		return
 	}
 
@@ -287,7 +295,9 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	dataBuf := make([]byte, util.MAX_MESSAGE_LEN)
 	recvSize, err := conn.Read(dataBuf)
 	if err != nil {
-		flag<-true
+		if fileTask.Status != util.TASK_IS_STOP {
+			flag<-true
+		}
 		return
 	}
 
@@ -300,12 +310,16 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 
 			// 如果是文件移动策略,则删除
 			if !fileTask.handleDataCutTran(conn, filePath) {
-				flag<-true
+				if fileTask.Status != util.TASK_IS_STOP {
+					flag<-true
+				}
 				return
 			}
 		}
 	}
-	flag<-true
+	if fileTask.Status != util.TASK_IS_STOP {
+		flag<-true
+	}
 }
 
 // 处理数据传输方式为移动
@@ -344,10 +358,10 @@ func (fileTask *FileTask) handleFileDataTran(conn net.Conn, filePath string, fil
 
 
 	if sendSize, err := util.SendFile(conn, filePath); err != nil {
-		//log.Printf("文件[%s]发送失败,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID ,sendSize)
+		log.Printf("文件[%s]发送失败,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID ,sendSize)
 		transResult = "文件发送失败"
 	} else {
-		//log.Printf("文件[%s]发送完毕,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID, sendSize)
+		log.Printf("文件[%s]发送完毕,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID, sendSize)
 		transResult = "文件发送成功"
 
 		if fileTask.TaskInfo.TranType == util.FILE_COPY {
