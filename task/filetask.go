@@ -238,6 +238,8 @@ func (fileTask *FileTask) handleMaxFileTransNums(transFlag chan<- bool, tranType
 
 // 处理数据传输,目录传输和文件传输
 func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
+	// 将windows下文件路径中反斜杠进行转化
+	filePath = strings.Replace(filePath, `\`,`/`,-1)
 	// 获取文件属性
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -458,6 +460,9 @@ func (fileTask *FileTask) copyFileLogToDB(filename string, filesize int64) bool 
 
 // 检查数据库中是否存在该文件
 func (fileTask *FileTask) checkIsExistsFileCopyFromDB(filename string) bool {
+	// 将windows下文件路径中反斜杠进行转化
+	filename = strings.Replace(filename, `\`,`/`,-1)
+
 	// 根据文件全路径获取文件md5
 	fileMd5, err := util.HashFile(filename)
 	if err != nil {

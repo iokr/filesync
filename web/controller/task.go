@@ -70,6 +70,9 @@ func AdminTaskCreatePost(c *gin.Context) {
 		scheduleTime = 1
 	}
 
+	srcPath = strings.Replace(srcPath, `\`, `/`, -1)
+	destPath = strings.Replace(destPath, `\`, `/`, -1)
+
 	tFileInfo := &model.TaskFileInfo{
 		TaskID:taskID,
 		SrcHost:srcHost,
@@ -143,6 +146,9 @@ func AdminTaskEditPost(c *gin.Context) {
 	if scheduleTime < 1 {
 		scheduleTime = 1
 	}
+
+	srcPath = strings.Replace(srcPath, `\`, `/`, -1)
+	destPath = strings.Replace(destPath, `\`, `/`, -1)
 
 	tFileInfo := &model.TaskFileInfo{
 		TaskID:taskID,
