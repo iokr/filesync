@@ -14,9 +14,18 @@
     "WebPort"             : 8023,               /*Web服务器监听端口*/
     "FServerPort"         : 8686,               /*文件传输服务器监听端口*/
     "MaxMultipartMemory"  : 3,                  /*上传的图片最大允许的大小，单位MB*/
-    "MaxFtsNum"           : 10,                  /*每次最大同时传输文件个数*/
+    "MaxFtsNum"           : 10,                 /*每次最大同时传输文件个数*/
+    "WebHost"             : "",                 /*web服务器监听IP(默认监听所有)*/
+    "FServerHost"         : "",                 /*FServer服务器监听IP(默认监听所有)*/
+    "WebUser"             : "admin",            /*web界面登陆用户名*/
+    "WebPwd"              : "123456789",        /*web界面登陆密码*/
     "Env"                 : "development",      /*模式(开发，测试，产品)*/
-    "LogDir"              : "",                 /*日志文件所在的目录，如果不设的话，默认在项目目录下*/
+    "LogDir"              : "../log",           /*日志文件所在的目录，如果不设的话，默认在项目目录下*/
+    "LogOldDir"           : "../old_log",       /*旧日志文件所在的目录，如果不设的话，默认在项目目录下*/
+    "LogPrefix"           : "fts",              /*日志文件前缀名(默认program)*/
+    "LogSuffix"           : "",                 /*日志文件后缀名(默认log)*/
+    "LogMaxLine"          : 10000,              /*日志文件的最大行数(默认10000行)*/
+    "LogMaxByte"          : 52428800,           /*日志文件的最大字节数(默认52428800字节(50M))*/
     "LogFile"             : "filesync.log"      /*日志文件*/
   }
 }

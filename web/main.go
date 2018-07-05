@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"github.com/gin-gonic/gin"
 	"os"
 	"io"
+	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/dzhenquan/filesync/config"
 	"github.com/dzhenquan/filesync/model"
 	"github.com/dzhenquan/filesync/web/router"
@@ -50,5 +50,7 @@ func main() {
 
 	router.Route(app)
 
-	app.Run(":" + fmt.Sprintf("%d", config.ServerConfig.WebPort))
+	addr := fmt.Sprintf("%s:%d", config.ServerConfig.WebHost, config.ServerConfig.WebPort)
+
+	app.Run(addr)
 }

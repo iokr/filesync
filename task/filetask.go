@@ -3,15 +3,14 @@ package task
 import (
 	"os"
 	"io"
-	"log"
 	"net"
-	"fmt"
 	"sync"
 	"time"
 	"strings"
 	"github.com/dzhenquan/filesync/config"
 	"github.com/dzhenquan/filesync/model"
 	"github.com/dzhenquan/filesync/util"
+	. "github.com/dzhenquan/filesync/tlog"
 )
 
 type FileTask struct {
@@ -40,12 +39,12 @@ func (fileTask *FileTask) CreateFileTranServer() {
 	}
 	defer listen.Close()
 
-	log.Printf("创建[%s]文件传输服务器成功!\n", fileTask.TaskID)
+	Tlog.Printf("创建[%s]文件传输服务器成功!\n", fileTask.TaskID)
 
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			log.Println("接受新的连接请求失败,file err: ", err)
+			Tlog.Errorln("接受新的连接请求失败,file err: ", err)
 			continue
 		}
 
@@ -87,14 +86,14 @@ func (fileTask *FileTask) handleDataConn(conn net.Conn) {
 			if err == io.EOF {
 				return
 			}
-			log.Println("读取文件属性信息失败!")
+			Tlog.Errorln("读取文件属性信息失败!")
 			continue
 		}
 		defer conn.Close()
 
 		tFileInfo, err := MarshalJsonToStruct(dataBuf[:recvSize])
 		if err != nil {
-			log.Println("err:", err)
+			Tlog.Errorln("err:", err)
 			continue
 		}
 
@@ -135,7 +134,7 @@ func (fileTask *FileTask) handleFileDataConn(conn net.Conn, filename string, fil
 	}
 
 	if _, err := util.RecvFile(conn, filename, uint64(filesize)); err == nil {
-		log.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
+		Tlog.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
 
 		transResult = "文件接收成功"
 		if fileTask.TaskInfo.TranType == util.FILE_CUT{
@@ -145,7 +144,7 @@ func (fileTask *FileTask) handleFileDataConn(conn net.Conn, filename string, fil
 		//fmt.Println("md5:", hash)
 	} else {
 		transResult = "文件接收失败"
-		log.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
+		Tlog.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
 	}
 	finishTime := time.Now().Format("2006-01-02 15:04:05")
 	tFileLog.FileEndTime = finishTime
@@ -179,7 +178,7 @@ func (fileTask *FileTask) handleFileGoSchedule(filelist []string, tranType int) 
 			}
 
 			if fileTask.Status == util.TASK_IS_STOP {
-				log.Println("开始退出文件传输....... ", fileTask.Status)
+				Tlog.Println("开始退出文件传输....... ", fileTask.Status)
 				close(transFlag)
 				return
 			}
@@ -191,7 +190,7 @@ func (fileTask *FileTask) handleFileGoSchedule(filelist []string, tranType int) 
 		transFlag := make(chan bool, 1)
 
 		if fileTask.Status == util.TASK_IS_STOP {
-			log.Println("开始退出文件传输,....... ", fileTask.Status)
+			Tlog.Println("开始退出文件传输,....... ", fileTask.Status)
 			close(transFlag)
 			return
 		}
@@ -224,7 +223,7 @@ func (fileTask *FileTask) handleMaxFileTransNums(transFlag chan<- bool, tranType
 		go fileTask.handleDataTran(filelist[i], flag)
 
 		if fileTask.Status == util.TASK_IS_STOP {
-			log.Println("开始退出文件传输,....... ", fileTask.Status)
+			Tlog.Println("开始退出文件传输,....... ", fileTask.Status)
 			transFlag<-true
 			return
 		}
@@ -243,7 +242,7 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	// 获取文件属性
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
-		fmt.Printf("File [%s] is not exists!\n", filePath)
+		Tlog.Errorf("File [%s] is not exists!\n", filePath)
 		if fileTask.Status != util.TASK_IS_STOP {
 			flag<-true
 		}
@@ -286,7 +285,7 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	// 发送报文
 	_, err = conn.Write([]byte(dataByte))
 	if err != nil {
-		fmt.Println("Send data string is failure!")
+		Tlog.Errorln("Send data string is failure!")
 		if fileTask.Status != util.TASK_IS_STOP {
 			flag<-true
 		}
@@ -360,10 +359,10 @@ func (fileTask *FileTask) handleFileDataTran(conn net.Conn, filePath string, fil
 
 
 	if sendSize, err := util.SendFile(conn, filePath); err != nil {
-		log.Printf("文件[%s]发送失败,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID ,sendSize)
+		Tlog.Printf("文件[%s]发送失败,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID ,sendSize)
 		transResult = "文件发送失败"
 	} else {
-		log.Printf("文件[%s]发送完毕,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID, sendSize)
+		Tlog.Printf("文件[%s]发送完毕,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID, sendSize)
 		transResult = "文件发送成功"
 
 		if fileTask.TaskInfo.TranType == util.FILE_COPY {
@@ -388,7 +387,7 @@ func (fileTask *FileTask) handleTaskFinishUpdateStatusTime() error {
 	nowTime := time.Now().Unix()
 
 	if fileTask.Status == util.TASK_IS_STOP {
-		log.Println("开始退出文件传输,....... ", fileTask.Status)
+		Tlog.Println("开始退出文件传输,....... ", fileTask.Status)
 		return nil
 	}
 
@@ -430,7 +429,7 @@ func (fileTask *FileTask) copyFileLogToDB(filename string, filesize int64) bool 
 	// 根据文件全路径获取文件md5
 	fileMd5, err := util.HashFile(filename)
 	if err != nil {
-		log.Printf("获取文件[%s]MD5失败!\n", filename)
+		Tlog.Errorf("获取文件[%s]MD5失败!\n", filename)
 		return false
 	}
 
@@ -466,7 +465,7 @@ func (fileTask *FileTask) checkIsExistsFileCopyFromDB(filename string) bool {
 	// 根据文件全路径获取文件md5
 	fileMd5, err := util.HashFile(filename)
 	if err != nil {
-		log.Printf("获取文件[%s]MD5失败!\n", filename)
+		Tlog.Errorf("获取文件[%s]MD5失败!\n", filename)
 		return true
 	}
 

@@ -62,8 +62,17 @@ type serverConfig struct {
 	FServerPort 		int			// 文件传输服务器监听端口
 	MaxMultipartMemory 	int			// 上传的图片最大允许的大小，单位MB
 	MaxFtsNum			int 		// 每次最大同时传输文件个数
+	WebHost 			string 		// web服务器监听IP(默认监听所有)
+	FServerHost 		string 		// FServer服务器监听IP(默认监听所有)
+	WebUser				string 		// web界面登陆用户名
+	WebPwd 				string 		// web界面登陆密码
 	Env                	string		// 模式(开发，测试，产品)
 	LogDir            	string		// 日志文件所在的目录，如果不设的话，默认在项目目录下
+	LogOldDir 			string		// 旧日志文件所在的目录，如果不设的话，默认在项目目录下
+	LogPrefix 			string 		// 日志文件前缀名(默认program)
+	LogSuffix 			string 		// 日志文件后缀名(默认log)
+	LogMaxLine 			int64 		// 日志文件的最大行数(默认10000行)
+	LogMaxByte 			int64 		// 日志文件的最大字节数(默认52428800字节(50M))
 	LogFile            	string		// 日志文件
 
 /*

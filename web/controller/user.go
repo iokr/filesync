@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+	"github.com/dzhenquan/filesync/config"
 )
 
 // SignIn Get  用户登录
@@ -17,8 +18,8 @@ func SigninPost(c *gin.Context) {
 
 	useremail = strings.TrimSpace(useremail)
 
-	if strings.Compare(useremail, "admin") == 0 &&
-		strings.Compare(password, "123456") == 0 {
+	if strings.Compare(useremail, config.ServerConfig.WebUser) == 0 &&
+		strings.Compare(password, config.ServerConfig.WebPwd) == 0 {
 
 		c.Redirect(http.StatusMovedPermanently, "/admin/index")
 		return

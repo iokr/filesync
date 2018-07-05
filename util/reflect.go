@@ -23,7 +23,8 @@ func setField(obj interface{}, name string, value interface{}) error {
 	valTypeStr	:= val.Type().String()
 	fieldTypeStr := fieldType.String()
 
-	if valTypeStr == "float64" && fieldTypeStr == "int" {
+	if ((valTypeStr == "float64" && fieldTypeStr == "int") ||
+		(valTypeStr == "float64" && fieldTypeStr == "int64")){
 		val = val.Convert(fieldType)
 	} else if fieldType != val.Type() {
 		return fmt.Errorf("Provided value type " + valTypeStr + " didn`t match obj field type " + fieldTypeStr)

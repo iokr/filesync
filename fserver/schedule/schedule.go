@@ -1,10 +1,10 @@
 package schedule
 
 import (
-	"github.com/dzhenquan/filesync/util"
 	"time"
+	"github.com/dzhenquan/filesync/util"
 	"github.com/dzhenquan/filesync/model"
-	"log"
+	. "github.com/dzhenquan/filesync/tlog"
 )
 
 func HandleTaskSchedule() {
@@ -12,7 +12,7 @@ func HandleTaskSchedule() {
 		// 从数据库中加载所有任务
 		tFileInfos, err := model.FindAllTaskQuery()
 		if err != nil {
-			log.Println("从数据库获取所有任务失败!")
+			Tlog.Println("从数据库获取所有任务失败!")
 			continue
 		}
 
