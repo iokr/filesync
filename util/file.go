@@ -3,10 +3,10 @@ package util
 import (
 	"os"
 	"net"
-	"io/ioutil"
 	"io"
 	"crypto/md5"
 	"fmt"
+	"bufio"
 )
 
 type FileInfo struct {
@@ -16,6 +16,7 @@ type FileInfo struct {
 
 // Send file by conn and file name
 // returns send file size or err
+/*
 func SendFile(conn net.Conn, filename string) (sendLen int64, err error) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -36,9 +37,11 @@ func SendFile(conn net.Conn, filename string) (sendLen int64, err error) {
 
 	return int64(sendSize), nil
 }
+*/
 
 // Recv file by conn, file name and file size
 // returns true/false or err
+/*
 func RecvFile(conn net.Conn, filename string, filesize uint64) (flag bool, err error) {
 	f, err := os.Create(filename)
 	if err != nil {
@@ -61,6 +64,69 @@ func RecvFile(conn net.Conn, filename string, filesize uint64) (flag bool, err e
 		f.Write(fileBuf[:readLen])
 
 		filesize = filesize-uint64(readLen)
+	}
+	return true, nil
+}
+*/
+
+func SendFile(conn net.Conn, filename string) (sendLen int64, err error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return -1, err
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	buffer := make([]byte, MAX_FILE_DATA_LEN)
+
+	for {
+		rsize, err := reader.Read(buffer)
+		if rsize > 0 {
+			_, err := conn.Write(buffer[:rsize])
+			if err != nil {
+				return -1, err
+			}
+			sendLen += int64(rsize)
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return -1, err
+		}
+	}
+
+	return sendLen, nil
+}
+
+func RecvFile(conn net.Conn, filename string, filesize uint64) (flag bool, err error) {
+	file, err := os.Create(filename)
+	if err != nil {
+		file.Close()
+		return false, err
+	}
+	defer file.Close()
+
+	fileBuf := make([]byte, MAX_FILE_DATA_LEN)
+	writer := bufio.NewWriter(file)
+	defer writer.Flush()
+
+	for filesize > 0{
+		readLen, err := conn.Read(fileBuf)
+		if readLen > 0 {
+			wsize, err := writer.Write(fileBuf[:readLen])
+			if err != nil {
+				return false, err
+			}
+			filesize = filesize-uint64(wsize)
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return false, err
+		}
 	}
 	return true, nil
 }
