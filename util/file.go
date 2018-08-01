@@ -7,6 +7,8 @@ import (
 	"crypto/md5"
 	"fmt"
 	"bufio"
+	"context"
+	"errors"
 )
 
 type FileInfo struct {
@@ -69,7 +71,7 @@ func RecvFile(conn net.Conn, filename string, filesize uint64) (flag bool, err e
 }
 */
 
-func SendFile(conn net.Conn, filename string) (sendLen int64, err error) {
+func SendFile(ctx context.Context, conn net.Conn, filename string) (sendLen int64, err error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return -1, err
@@ -77,30 +79,32 @@ func SendFile(conn net.Conn, filename string) (sendLen int64, err error) {
 	defer file.Close()
 
 	reader := bufio.NewReader(file)
-
 	buffer := make([]byte, MAX_FILE_DATA_LEN)
 
 	for {
-		rsize, err := reader.Read(buffer)
-		if rsize > 0 {
-			_, err := conn.Write(buffer[:rsize])
+		select {
+		case <-ctx.Done():
+			return sendLen, errors.New("stop file send")
+		default:
+			rsize, err := reader.Read(buffer)
+			if rsize > 0 {
+				_, err := conn.Write(buffer[:rsize])
+				if err != nil {
+					return -1, err
+				}
+				sendLen += int64(rsize)
+			}
 			if err != nil {
+				if err == io.EOF {
+					return sendLen, nil
+				}
 				return -1, err
 			}
-			sendLen += int64(rsize)
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return -1, err
 		}
 	}
-
-	return sendLen, nil
 }
 
-func RecvFile(conn net.Conn, filename string, filesize uint64) (flag bool, err error) {
+func RecvFile(ctx context.Context, conn net.Conn, filename string, filesize uint64) (flag bool, err error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		file.Close()
@@ -112,20 +116,28 @@ func RecvFile(conn net.Conn, filename string, filesize uint64) (flag bool, err e
 	writer := bufio.NewWriter(file)
 	defer writer.Flush()
 
-	for filesize > 0{
-		readLen, err := conn.Read(fileBuf)
-		if readLen > 0 {
-			wsize, err := writer.Write(fileBuf[:readLen])
+	for filesize > 0 {
+		select {
+		case <-ctx.Done():
+			if filesize > 0 {
+				return false, errors.New("stop file recv")
+			}
+			return true, nil
+		default:
+			readLen, err := conn.Read(fileBuf)
+			if readLen > 0 {
+				wsize, err := writer.Write(fileBuf[:readLen])
+				if err != nil {
+					return false, err
+				}
+				filesize = filesize-uint64(wsize)
+			}
 			if err != nil {
+				if err == io.EOF {
+					return true, nil
+				}
 				return false, err
 			}
-			filesize = filesize-uint64(wsize)
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return false, err
 		}
 	}
 	return true, nil

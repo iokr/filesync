@@ -13,6 +13,7 @@ import (
 	"github.com/dzhenquan/filesync/model"
 	"github.com/dzhenquan/filesync/config"
 	"github.com/dzhenquan/filesync/fserver/schedule"
+	"context"
 )
 
 func main() {
@@ -192,6 +193,7 @@ func handleTaskCreate(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo) bo
 
 // handle task start
 func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isLocalDestIP bool, isLocalHost bool) bool {
+
 	// 从数据库获取任务
 	taskFileInfo, err := tFileInfo.Find()
 	if err != nil {
@@ -202,7 +204,6 @@ func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isL
 	// 从任务链表中查找该任务
 	fTask := task.FindFileTaskByTaskIDFromList(tFileInfo.TaskID)
 	if fTask != nil {
-
 		if (fTask.Status == util.TASK_IS_RUNNING) ||
 			(taskFileInfo.Status == util.TASK_IS_RUNNING) {
 			Tlog.Printf("任务[%s]正在运行,不做处理!\n", tFileInfo.TaskID)
@@ -233,23 +234,32 @@ func handleTaskStart(tFileInfo *model.TaskFileInfo, fileTask *task.FileTask, isL
 		task.FileTasks = append(task.FileTasks, fileTask)
 	}
 
+	// 任务Context上下文用来控制协程
+	ctxCancel, ok := task.FindTaskContext(tFileInfo.TaskID)
+	if ok {
+		task.DeleteTaskContext(tFileInfo.TaskID)
+		ctxCancel()
+	}
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	task.AddTaskContext(tFileInfo.TaskID, ctxCancel)
+
 	// 如果源主机和目标主机是同一个主机
 	if isLocalHost {
-		go fileTask.CreateFileTranServer()
+		go fileTask.CreateFileTranServer(ctx)
 
 		// 在这里睡眠是为了保证服务器先准备好接收文件操作
 		time.Sleep(5*time.Millisecond)
 
-		go fileTask.HandleTaskStartRequest()
+		go fileTask.HandleTaskStartRequest(ctx)
 
 		return true
 	}
 
 	// 如果本机是目标主机
 	if isLocalDestIP {
-		go fileTask.CreateFileTranServer()
+		go fileTask.CreateFileTranServer(ctx)
 	} else {
-		go fileTask.HandleTaskStartRequest()
+		go fileTask.HandleTaskStartRequest(ctx)
 	}
 
 	return true
@@ -269,8 +279,16 @@ func handleTaskStop(tFileInfo *model.TaskFileInfo, taskInfo *task.TaskInfo, isLo
 		return true
 	}
 
-	fTask.SetFileTaskStatus(util.TASK_IS_STOP)
+	taskCancel, ok := task.FindTaskContext(taskInfo.TaskID)
+	if !ok {
+		Tlog.Printf("任务[%s]不存在!\n", taskInfo.TaskID)
+		return false
+	}
+	task.DeleteTaskContext(taskInfo.TaskID)
+	Tlog.Println("stop taskCancel: ", taskCancel)
+	taskCancel()
 
+	fTask.SetFileTaskStatus(util.TASK_IS_STOP)
 	tFileInfo.Status = util.TASK_IS_STOP
 
 	// 更新数据库中任务状态

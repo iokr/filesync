@@ -8,7 +8,7 @@ import (
 var Tlog *dlog.DLogger
 
 func init() {
-	dlog := dlog.New(config.ServerConfig.LogDir,
+	dlog := dlog.NewDLogger(config.ServerConfig.LogDir,
 					config.ServerConfig.LogOldDir,
 					config.ServerConfig.LogPrefix,
 					config.ServerConfig.LogSuffix)

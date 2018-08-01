@@ -11,6 +11,7 @@ import (
 	"github.com/dzhenquan/filesync/model"
 	"github.com/dzhenquan/filesync/util"
 	. "github.com/dzhenquan/filesync/tlog"
+	"context"
 )
 
 type FileTask struct {
@@ -26,12 +27,13 @@ var (
 	taskMutex	sync.Mutex
 )
 
+
 func (fileTask *FileTask) NewFileTask() {
 
 }
 
 // 创建文件传输服务器
-func (fileTask *FileTask) CreateFileTranServer() {
+func (fileTask *FileTask) CreateFileTranServer(ctx context.Context) {
 	listen, err := util.CreateSocketListen("", fileTask.TaskInfo.FilePort)
 	if err != nil {
 		//log.Println("创建本地监听失败!")
@@ -42,42 +44,49 @@ func (fileTask *FileTask) CreateFileTranServer() {
 	Tlog.Printf("创建[%s]文件传输服务器成功!\n", fileTask.TaskID)
 
 	for {
-		conn, err := listen.Accept()
-		if err != nil {
-			Tlog.Errorln("接受新的连接请求失败,file err: ", err)
-			continue
-		}
-
-		//log.Println("conn: ", conn.RemoteAddr())
-		// 为每一个数据连接开一个协程去处理数据
-		go fileTask.handleDataConn(conn)
-
-		if fileTask.Status == util.TASK_IS_STOP {
-			break
+		select {
+		case <-ctx.Done():
+			Tlog.Printf("文件传输服务器[%s]退出!\n", fileTask.TaskID)
+			return
+		default:
+			conn, err := listen.Accept()
+			if err != nil {
+				Tlog.Errorln("接受新的连接请求失败,file err: ", err)
+				continue
+			}
+			//log.Println("conn: ", conn.RemoteAddr())
+			// 为每一个数据连接开一个协程去处理数据
+			go fileTask.handleDataConn(ctx, conn)
 		}
 	}
 }
 
 // 开启任务传输请求
-func (fileTask *FileTask) HandleTaskStartRequest()  {
-	// 获取源目录文件列表
-	filelist, filedir, err := util.GetCurrentFileList(fileTask.TaskInfo.SrcPath)
-	if err != nil {
+func (fileTask *FileTask) HandleTaskStartRequest(ctx context.Context)  {
+	select {
+	case <-ctx.Done():
+		Tlog.Printf("开始退出文件传输[%d]....... \n", fileTask.Status)
 		return
+	default:
+		// 获取源目录文件列表
+		filelist, filedir, err := util.GetCurrentFileList(fileTask.TaskInfo.SrcPath)
+		if err != nil {
+			return
+		}
+		// 发送目录
+		fileTask.handleFileGoSchedule(ctx, filedir, util.TRAN_DIR)
+
+		// 发送文件
+		fileTask.handleFileGoSchedule(ctx, filelist, util.TRAN_FILE)
+
+		// 任务完成,更改数据库任务完成时间
+		fileTask.handleTaskFinishUpdateStatusTime(ctx)
 	}
-
-	// 发送目录
-	fileTask.handleFileGoSchedule(filedir, util.TRAN_DIR)
-
-	// 发送文件
-	fileTask.handleFileGoSchedule(filelist, util.TRAN_FILE)
-
-	// 任务完成,更改数据库任务完成时间
-	fileTask.handleTaskFinishUpdateStatusTime()
+	Tlog.Println("Exit HandleTaskStartRequest.")
 }
 
 // 处理数据连接
-func (fileTask *FileTask) handleDataConn(conn net.Conn) {
+func (fileTask *FileTask) handleDataConn(ctx context.Context, conn net.Conn) {
 	for {
 		dataBuf := make([]byte, util.MAX_MESSAGE_LEN)
 
@@ -100,27 +109,39 @@ func (fileTask *FileTask) handleDataConn(conn net.Conn) {
 		// 接收json报文成功,返回成功消息
 		conn.Write([]byte("ok"))
 
-		filename := fileTask.TaskInfo.DestPath + tFileInfo.FilePath
-		if strings.Compare(tFileInfo.FileType, "dir") == 0 {
-			// 处理文件夹数据连接
-			fileTask.handleDirDataConn(conn, filename)
-		} else if strings.Compare(tFileInfo.FileType, "file") == 0 {
-			// 处理文件数据连接
-			fileTask.handleFileDataConn(conn, filename, tFileInfo.FileSize)
+		select {
+		case <-ctx.Done():
+			Tlog.Printf("文件传输服务器[%s]退出!\n", fileTask.TaskID)
+			return
+		default:
+			filename := fileTask.TaskInfo.DestPath + tFileInfo.FilePath
+			if strings.Compare(tFileInfo.FileType, "dir") == 0 {
+				// 处理文件夹数据连接
+				fileTask.handleDirDataConn(ctx, conn, filename)
+			} else if strings.Compare(tFileInfo.FileType, "file") == 0 {
+				// 处理文件数据连接
+				fileTask.handleFileDataConn(ctx, conn, filename, tFileInfo.FileSize)
+			}
 		}
 	}
 }
 
 // 处理文件夹传输数据连接
-func (fileTask *FileTask) handleDirDataConn(conn net.Conn, dirPath string) {
-	// 检查本地是否存在该文件夹,不存在则创建
-	if !util.CheckIsDirByPath(dirPath) {
-		util.MkdirAllByPath(dirPath)
+func (fileTask *FileTask) handleDirDataConn(ctx context.Context, conn net.Conn, dirPath string) {
+	select {
+	case <-ctx.Done():
+		Tlog.Printf("文件传输服务器[%s]退出!\n", fileTask.TaskID)
+		return
+	default:
+		// 检查本地是否存在该文件夹,不存在则创建
+		if !util.CheckIsDirByPath(dirPath) {
+			util.MkdirAllByPath(dirPath)
+		}
 	}
 }
 
 // 处理文件传输数据连接
-func (fileTask *FileTask) handleFileDataConn(conn net.Conn, filename string, filesize int64) {
+func (fileTask *FileTask) handleFileDataConn(ctx context.Context, conn net.Conn, filename string, filesize int64) {
 	var transResult string
 
 	startTime := time.Now().Format("2006-01-02 15:04:05")
@@ -133,19 +154,26 @@ func (fileTask *FileTask) handleFileDataConn(conn net.Conn, filename string, fil
 		FileStartTime: startTime,
 	}
 
-	if _, err := util.RecvFile(conn, filename, uint64(filesize)); err == nil {
-		Tlog.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
+	select {
+	case <-ctx.Done():
+		Tlog.Printf("文件传输服务器[%s]退出!\n", fileTask.TaskID)
+		return
+	default:
+		if _, err := util.RecvFile(ctx, conn, filename, uint64(filesize)); err == nil {
+			Tlog.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
 
-		transResult = "文件接收成功"
-		if fileTask.TaskInfo.TranType == util.FILE_CUT{
-			conn.Write([]byte("ok"))
+			transResult = "文件接收成功"
+			if fileTask.TaskInfo.TranType == util.FILE_CUT{
+				conn.Write([]byte("ok"))
+			}
+			//hash, _ := HashFile(filename)
+			//fmt.Println("md5:", hash)
+		} else {
+			transResult = "文件接收失败"
+			Tlog.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
 		}
-		//hash, _ := HashFile(filename)
-		//fmt.Println("md5:", hash)
-	} else {
-		transResult = "文件接收失败"
-		Tlog.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
 	}
+
 	finishTime := time.Now().Format("2006-01-02 15:04:05")
 	tFileLog.FileEndTime = finishTime
 	tFileLog.TransResult = transResult
@@ -154,8 +182,11 @@ func (fileTask *FileTask) handleFileDataConn(conn net.Conn, filename string, fil
 }
 
 // 根据每次传输文件的个数,对所有文件列表进行分页调度
-func (fileTask *FileTask) handleFileGoSchedule(filelist []string, tranType int) {
+func (fileTask *FileTask) handleFileGoSchedule(ctx context.Context, filelist []string, tranType int) {
 	fileTotalCount := len(filelist)
+	if fileTotalCount <= 0 {
+		return
+	}
 
 	// 根据每次传输文件的个数,对所有文件列表进行分页调度
 	if fileTotalCount > config.ServerConfig.MaxFtsNum {
@@ -164,11 +195,8 @@ func (fileTask *FileTask) handleFileGoSchedule(filelist []string, tranType int) 
 			fileTotalPage++
 		}
 
+		var endFile int
 		for i := 0; i < fileTotalPage; i++ {
-			var endFile int
-
-			transFlag := make(chan bool, 1)
-
 			startFile := i*config.ServerConfig.MaxFtsNum
 			curfileCount := fileTotalCount - startFile
 			if curfileCount >= config.ServerConfig.MaxFtsNum {
@@ -177,75 +205,57 @@ func (fileTask *FileTask) handleFileGoSchedule(filelist []string, tranType int) 
 				endFile = startFile + curfileCount
 			}
 
-			if fileTask.Status == util.TASK_IS_STOP {
-				Tlog.Println("开始退出文件传输....... ", fileTask.Status)
-				close(transFlag)
+			select {
+			case <-ctx.Done():
+				Tlog.Printf("开始退出文件传输[%d]....... \n", fileTask.Status)
 				return
+			default:
+				fileTask.handleMaxFileTransNums(ctx, tranType, filelist[startFile:endFile])
 			}
-			fileTask.handleMaxFileTransNums(transFlag, tranType, filelist[startFile:endFile])
-			<-transFlag
-			close(transFlag)
 		}
 	} else {
-		transFlag := make(chan bool, 1)
-
-		if fileTask.Status == util.TASK_IS_STOP {
-			Tlog.Println("开始退出文件传输,....... ", fileTask.Status)
-			close(transFlag)
-			return
-		}
-
-		fileTask.handleMaxFileTransNums(transFlag, tranType, filelist[:fileTotalCount])
-		<-transFlag
-		close(transFlag)
+		fileTask.handleMaxFileTransNums(ctx, tranType, filelist[:fileTotalCount])
 	}
 }
 
 // 根据分页调度创建传输文件的最大协程数
-func (fileTask *FileTask) handleMaxFileTransNums(transFlag chan<- bool, tranType int, filelist []string) {
+func (fileTask *FileTask) handleMaxFileTransNums(ctx context.Context, tranType int, filelist []string) {
 	fileThreadCount := len(filelist)
 
-	flag := make(chan bool, fileThreadCount)
-	defer close(flag)
-	
+	var waitGroup sync.WaitGroup
 	for i := 0; i < fileThreadCount; i++ {
-
-		// 如果是文件复制且传输的是文件
-		if (fileTask.TaskInfo.TranType == util.FILE_COPY) &&
-			(tranType == util.TRAN_FILE) {
-			// 从数据库中检查该文件是否更改
-			if fileTask.checkIsExistsFileCopyFromDB(filelist[i]) {
-				flag<-true
-				continue
-			}
-		}
-
-		go fileTask.handleDataTran(filelist[i], flag)
-
-		if fileTask.Status == util.TASK_IS_STOP {
-			Tlog.Println("开始退出文件传输,....... ", fileTask.Status)
-			transFlag<-true
+		select {
+		case <-ctx.Done():
+			Tlog.Printf("开始退出文件传输[%d]....... \n", fileTask.Status)
 			return
+		default:
+			// 将windows下文件路径中反斜杠进行转化
+			filePath := strings.Replace(filelist[i], `\`,`/`,-1)
+
+			// 如果是文件复制且传输的是文件
+			if (fileTask.TaskInfo.TranType == util.FILE_COPY) &&
+				(tranType == util.TRAN_FILE) {
+				// 从数据库中检查该文件是否更改
+				if fileTask.checkIsExistsFileCopyFromDB(filePath) {
+					continue
+				}
+			}
+
+			waitGroup.Add(1)
+			go fileTask.handleDataTran(ctx, filePath, &waitGroup)
 		}
 	}
-
-	for i := 0; i < fileThreadCount; i++ {
-		<-flag
-	}
-	transFlag<-true
+	waitGroup.Wait()
 }
 
 // 处理数据传输,目录传输和文件传输
-func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
-	// 将windows下文件路径中反斜杠进行转化
-	filePath = strings.Replace(filePath, `\`,`/`,-1)
+func (fileTask *FileTask) handleDataTran(ctx context.Context, filePath string, waitGroup *sync.WaitGroup) {
+	defer waitGroup.Done()
+
 	// 获取文件属性
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		Tlog.Errorf("File [%s] is not exists!\n", filePath)
-		if fileTask.Status != util.TASK_IS_STOP {
-			flag<-true
-		}
 		return
 	}
 
@@ -255,40 +265,17 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	// 连接到文件传输服务器
 	conn, err := util.CreateSocketConnect(fileTask.TaskInfo.DestHost, fileTask.TaskInfo.FilePort)
 	if err != nil {
-		if fileTask.Status != util.TASK_IS_STOP {
-			flag<-true
-		}
 		return
 	}
 	defer conn.Close()
 
-	tFileInfo := &TFileInfo{
-		FilePath: newPath,
-		FileSize:fileInfo.Size(),
-	}
-
-	if fileInfo.IsDir() {
-		tFileInfo.FileType = "dir"
-	} else {
-		tFileInfo.FileType = "file"
-	}
-
-	// 将结构体转化为json报文
-	dataByte, err := tFileInfo.MarshalToJson()
-	if err != nil {
-		if fileTask.Status != util.TASK_IS_STOP {
-			flag<-true
-		}
-		return
-	}
+	// 获取发送报文
+	dataByte, _ := GetMarshalToJson(newPath, fileInfo)
 
 	// 发送报文
 	_, err = conn.Write([]byte(dataByte))
 	if err != nil {
 		Tlog.Errorln("Send data string is failure!")
-		if fileTask.Status != util.TASK_IS_STOP {
-			flag<-true
-		}
 		return
 	}
 
@@ -296,54 +283,48 @@ func (fileTask *FileTask) handleDataTran(filePath string, flag chan<- bool) {
 	dataBuf := make([]byte, util.MAX_MESSAGE_LEN)
 	recvSize, err := conn.Read(dataBuf)
 	if err != nil {
-		if fileTask.Status != util.TASK_IS_STOP {
-			flag<-true
-		}
 		return
 	}
 
 	recvOk := dataBuf[:recvSize]
 	if strings.Compare(string(recvOk), "ok") == 0 {
-
 		// 如果不是目录,处理文件传输
 		if !fileInfo.IsDir() {
-			fileTask.handleFileDataTran(conn, filePath, fileInfo)
+			fileTask.handleFileDataTran(ctx, conn, filePath, fileInfo)
 
 			// 如果是文件移动策略,则删除
-			if !fileTask.handleDataCutTran(conn, filePath) {
-				if fileTask.Status != util.TASK_IS_STOP {
-					flag<-true
-				}
-				return
-			}
+			fileTask.handleDataCutTran(ctx, conn, filePath)
 		}
 	}
-	if fileTask.Status != util.TASK_IS_STOP {
-		flag<-true
-	}
+	return
 }
 
 // 处理数据传输方式为移动
-func (fileTask *FileTask) handleDataCutTran(conn net.Conn, filePath string) bool {
+func (fileTask *FileTask) handleDataCutTran(ctx context.Context, conn net.Conn, filePath string) bool {
 
-	// 如果是文件移动策略,则删除
-	if fileTask.TaskInfo.TranType == util.FILE_CUT {
-		bufDelete := make([]byte, util.MAX_MESSAGE_LEN)
+	select {
+	case <-ctx.Done():
+		return false
+	default:
+		// 如果是文件移动策略,则删除
+		if fileTask.TaskInfo.TranType == util.FILE_CUT {
+			bufDelete := make([]byte, util.MAX_MESSAGE_LEN)
 
-		recvSize, err := conn.Read(bufDelete)
-		if err != nil {
-			return false
-		}
-		recvDelete := bufDelete[:recvSize]
-		if strings.Compare(string(recvDelete), "ok") == 0 {
-			os.Remove(filePath)
+			recvSize, err := conn.Read(bufDelete)
+			if err != nil {
+				return false
+			}
+			recvDelete := bufDelete[:recvSize]
+			if strings.Compare(string(recvDelete), "ok") == 0 {
+				os.Remove(filePath)
+			}
 		}
 	}
 	return true
 }
 
 // 处理文件数据传输
-func (fileTask *FileTask) handleFileDataTran(conn net.Conn, filePath string, fileInfo os.FileInfo) {
+func (fileTask *FileTask) handleFileDataTran(ctx context.Context, conn net.Conn, filePath string, fileInfo os.FileInfo) {
 	var transResult string
 
 	// 文件传输日志记录到数据库
@@ -357,8 +338,7 @@ func (fileTask *FileTask) handleFileDataTran(conn net.Conn, filePath string, fil
 		FileStartTime: startTime,
 	}
 
-
-	if sendSize, err := util.SendFile(conn, filePath); err != nil {
+	if sendSize, err := util.SendFile(ctx, conn, filePath); err != nil {
 		Tlog.Printf("文件[%s]发送失败,TaskID:[%s],Len:[%d]!\n",filePath, fileTask.TaskID ,sendSize)
 		transResult = "文件发送失败"
 	} else {
@@ -380,27 +360,27 @@ func (fileTask *FileTask) handleFileDataTran(conn net.Conn, filePath string, fil
 }
 
 // 处理任务完成后续工作
-func (fileTask *FileTask) handleTaskFinishUpdateStatusTime() error {
+func (fileTask *FileTask) handleTaskFinishUpdateStatusTime(ctx context.Context) error {
 
 	time.Sleep(5*time.Millisecond)
 
 	nowTime := time.Now().Unix()
 
-	if fileTask.Status == util.TASK_IS_STOP {
+	select {
+	case <-ctx.Done():
 		Tlog.Println("开始退出文件传输,....... ", fileTask.Status)
 		return nil
+	default:
+		fileTask.SetFileTaskStatus(util.TASK_IS_RUNED)
+
+		// 更新数据库中任务状态
+		tFileInfo := model.TaskFileInfo{
+			TaskID:fileTask.TaskID,
+			Status:fileTask.Status,
+			LastFinishTime:nowTime,
+		}
+		return tFileInfo.UpdateTaskStatusTime()
 	}
-
-	fileTask.SetFileTaskStatus(util.TASK_IS_RUNED)
-
-	// 更新数据库中任务状态
-	tFileInfo := model.TaskFileInfo{
-		TaskID:fileTask.TaskID,
-		Status:fileTask.Status,
-		LastFinishTime:nowTime,
-	}
-
-	return tFileInfo.UpdateTaskStatusTime()
 }
 
 // 从复制数据库中查找文件
@@ -459,9 +439,6 @@ func (fileTask *FileTask) copyFileLogToDB(filename string, filesize int64) bool 
 
 // 检查数据库中是否存在该文件
 func (fileTask *FileTask) checkIsExistsFileCopyFromDB(filename string) bool {
-	// 将windows下文件路径中反斜杠进行转化
-	filename = strings.Replace(filename, `\`,`/`,-1)
-
 	// 根据文件全路径获取文件md5
 	fileMd5, err := util.HashFile(filename)
 	if err != nil {
