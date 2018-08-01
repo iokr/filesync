@@ -14,16 +14,16 @@ git clone https://github.com/dzhenquan/filesync.git
 
 后台服务器界面如下所示:  
 任务管理  
-![image](/dzhenquan/filesync/tree/master/images/task_manager.png)
+![任务管理](https://raw.githubusercontent.com/dzhenquan/filesync/master/images/task_manager.png)
 
 任务添加  
-![image](/dzhenquan/filesync/tree/master/images/task_add.png)
+![任务添加](https://raw.githubusercontent.com/dzhenquan/filesync/master/images/task_add.png)
 
 任务修改  
-![image](/dzhenquan/filesync/tree/master/images/task_update.png)
+![任务修改](https://raw.githubusercontent.com/dzhenquan/filesync/master/images/task_update.png)
 
 任务查看  
-![image](/dzhenquan/filesync/tree/master/images/task_show.png)
+![任务查看](https://raw.githubusercontent.com/dzhenquan/filesync/master/images/task_show.png)
 
 日志查看  
-![image](/dzhenquan/filesync/tree/master/images/log_manager.png)
+![日志查看](https://raw.githubusercontent.com/dzhenquan/filesync/master/images/log_manager.png)
