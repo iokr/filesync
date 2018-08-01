@@ -16,7 +16,7 @@ git clone https://github.com/dzhenquan/filesync.git
 任务管理  
 ![image](https://github.com/dzhenquan/filesync/tree/master/images/task_manager.png)
 
-任务添加
+任务添加  
 ![image](https://github.com/dzhenquan/filesync/tree/master/images/task_add.png)
 
 任务修改  
