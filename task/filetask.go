@@ -142,7 +142,6 @@ func (fileTask *FileTask) handleDirDataConn(ctx context.Context, conn net.Conn, 
 
 // 处理文件传输数据连接
 func (fileTask *FileTask) handleFileDataConn(ctx context.Context, conn net.Conn, filename string, filesize int64) {
-	var transResult string
 
 	startTime := time.Now().Format("2006-01-02 15:04:05")
 	tFileLog := &model.TaskFileLog{
@@ -154,25 +153,16 @@ func (fileTask *FileTask) handleFileDataConn(ctx context.Context, conn net.Conn,
 		FileStartTime: startTime,
 	}
 
-	select {
-	case <-ctx.Done():
-		Tlog.Printf("文件传输服务器[%s]退出!\n", fileTask.TaskID)
-		return
-	default:
-		if _, err := util.RecvFile(ctx, conn, filename, uint64(filesize)); err == nil {
-			Tlog.Printf("文件[%s]接收完毕,TaskID:[%s]!\n", filename,fileTask.TaskID)
-
-			transResult = "文件接收成功"
-			if fileTask.TaskInfo.TranType == util.FILE_CUT{
-				conn.Write([]byte("ok"))
-			}
-			//hash, _ := HashFile(filename)
-			//fmt.Println("md5:", hash)
-		} else {
-			transResult = "文件接收失败"
-			Tlog.Printf("文件[%s]接收失败,TaskID:[%s]!\n", filename,fileTask.TaskID)
+	transResult := "文件接收成功"
+	if _, err := util.RecvFile(ctx, conn, filename, uint64(filesize)); err == nil {
+		if fileTask.TaskInfo.TranType == util.FILE_CUT{
+			conn.Write([]byte("ok"))
 		}
+	} else {
+		transResult = "文件接收失败"
 	}
+
+	Tlog.Printf("文件[%s]%s,TaskID:[%s]!\n", transResult, filename,fileTask.TaskID)
 
 	finishTime := time.Now().Format("2006-01-02 15:04:05")
 	tFileLog.FileEndTime = finishTime
@@ -188,48 +178,24 @@ func (fileTask *FileTask) handleFileGoSchedule(ctx context.Context, filelist []s
 		return
 	}
 
-	// 根据每次传输文件的个数,对所有文件列表进行分页调度
-	if fileTotalCount > config.ServerConfig.MaxFtsNum {
-		fileTotalPage := fileTotalCount / config.ServerConfig.MaxFtsNum
-		if fileTotalCount % config.ServerConfig.MaxFtsNum > 0 {
-			fileTotalPage++
-		}
-
-		var endFile int
-		for i := 0; i < fileTotalPage; i++ {
-			startFile := i*config.ServerConfig.MaxFtsNum
-			curfileCount := fileTotalCount - startFile
-			if curfileCount >= config.ServerConfig.MaxFtsNum {
-				endFile = startFile + config.ServerConfig.MaxFtsNum
-			} else {
-				endFile = startFile + curfileCount
-			}
-
-			select {
-			case <-ctx.Done():
-				Tlog.Printf("开始退出文件传输[%d]....... \n", fileTask.Status)
-				return
-			default:
-				fileTask.handleMaxFileTransNums(ctx, tranType, filelist[startFile:endFile])
-			}
-		}
+	fileThreads := 0
+	if fileTotalCount >= config.ServerConfig.MaxFtsNum {
+		fileThreads = config.ServerConfig.MaxFtsNum
 	} else {
-		fileTask.handleMaxFileTransNums(ctx, tranType, filelist[:fileTotalCount])
+		fileThreads = fileTotalCount
 	}
-}
 
-// 根据分页调度创建传输文件的最大协程数
-func (fileTask *FileTask) handleMaxFileTransNums(ctx context.Context, tranType int, filelist []string) {
-	fileThreadCount := len(filelist)
+	sem := util.NewSemaphore(fileThreads)
+	defer sem.Wait()
+	defer sem.Close()
 
-	var waitGroup sync.WaitGroup
-	for i := 0; i < fileThreadCount; i++ {
+	for i := 0; i < fileTotalCount; i++ {
 		select {
 		case <-ctx.Done():
 			Tlog.Printf("开始退出文件传输[%d]....... \n", fileTask.Status)
 			return
 		default:
-			// 将windows下文件路径中反斜杠进行转化
+			sem.P()
 			filePath := strings.Replace(filelist[i], `\`,`/`,-1)
 
 			// 如果是文件复制且传输的是文件
@@ -240,17 +206,15 @@ func (fileTask *FileTask) handleMaxFileTransNums(ctx context.Context, tranType i
 					continue
 				}
 			}
-
-			waitGroup.Add(1)
-			go fileTask.handleDataTran(ctx, filePath, &waitGroup)
+			go fileTask.handleDataTran(ctx, filePath, sem)
 		}
 	}
-	waitGroup.Wait()
 }
 
+
 // 处理数据传输,目录传输和文件传输
-func (fileTask *FileTask) handleDataTran(ctx context.Context, filePath string, waitGroup *sync.WaitGroup) {
-	defer waitGroup.Done()
+func (fileTask *FileTask) handleDataTran(ctx context.Context, filePath string, waitGroup *util.Semaphore) {
+	defer waitGroup.V()
 
 	// 获取文件属性
 	fileInfo, err := os.Stat(filePath)

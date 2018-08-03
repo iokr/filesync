@@ -14,6 +14,8 @@ import (
 	"github.com/dzhenquan/filesync/config"
 	"github.com/dzhenquan/filesync/fserver/schedule"
 	"context"
+	"fmt"
+	"runtime"
 )
 
 func main() {
@@ -37,6 +39,13 @@ func main() {
 		os.Exit(-1)
 	}
 	defer listen.Close()
+
+	go func() {
+		for {
+			fmt.Println("go current nums: ", runtime.NumGoroutine())
+			time.Sleep(1*time.Second)
+		}
+	}()
 
 	//从数据库获取任务,对未完成任务进行调度
 	go schedule.HandleTaskSchedule()

@@ -39,7 +39,7 @@ func GetMarshalToJson(filePath string, fileInfo os.FileInfo) ([]byte, error) {
 		tFileInfo.FileType = "file"
 	}
 
-	// 将结构体转化为json报文
+	// 灏嗙粨鏋勪綋杞寲涓簀son鎶ユ枃
 	dataByte, err := tFileInfo.MarshalToJson()
 	if err != nil {
 		return nil, err
