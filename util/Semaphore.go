@@ -28,10 +28,8 @@ func (sem *Semaphore) V() {
 
 func (sem *Semaphore) Wait() {
 	sem.SemWaitGroup.Wait()
-	fmt.Println("33333333333333333333333333333")
 }
 
 func (sem *Semaphore) Close() {
 	close(sem.TotalThreads)
-	fmt.Println("111111111111111111111111111111")
 }
