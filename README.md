@@ -25,16 +25,16 @@ git clone https://github.com/iokr/filesync.git
 
 ## 效果图  
 任务管理  
-![任务管理](https://raw.githubusercontent.com/iokr/filesync/master/images/task_manager.png)
+![任务管理](https://github.com/iokr/filesync/blob/master/images/task_manager.png)
 
 任务添加  
-![任务添加](https://raw.githubusercontent.com/iokr/filesync/master/images/task_add.png)
+![任务添加](https://github.com/iokr/filesync/blob/master/images/task_add.png)
 
 任务修改  
-![任务修改](https://raw.githubusercontent.com/iokr/filesync/master/images/task_update.png)
+![任务修改](https://github.com/iokr/filesync/blob/master/images/task_update.png)
 
 任务查看  
-![任务查看](https://raw.githubusercontent.com/iokr/filesync/master/images/task_show.png)
+![任务查看](https://github.com/iokr/filesync/blob/master/images/task_show.png)
 
 日志查看  
-![日志查看](https://raw.githubusercontent.com/iokr/filesync/master/images/log_manager.png)
+![日志查看](https://github.com/iokr/filesync/blob/master/images/log_manager.png)
